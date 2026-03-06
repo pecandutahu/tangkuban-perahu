@@ -31,6 +31,8 @@ class RoleSeeder extends Seeder
         }
 
         // 2. Create Roles and assign existing permissions
+        Role::firstOrCreate(['name' => 'Super Admin']); // Super Admin tak butuh izin eksplisit, dicegat lewat Gate bypass
+
         $hrAdmin = Role::firstOrCreate(['name' => 'HR Admin']);
         // HR Admin can do everything
         $hrAdmin->syncPermissions($permissions);

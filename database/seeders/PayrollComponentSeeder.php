@@ -22,6 +22,7 @@ class PayrollComponentSeeder extends Seeder
             ['code' => 'GP_HLP', 'name' => 'Gaji Pokok Helper', 'component_type' => PayrollComponentType::EARNING->value, 'is_variable' => false, 'default_amount' => 2000000, 'is_active' => true],
             ['code' => 'GP_MCH', 'name' => 'Gaji Pokok Mekanik', 'component_type' => PayrollComponentType::EARNING->value, 'is_variable' => false, 'default_amount' => 4000000, 'is_active' => true],
             ['code' => 'UM', 'name' => 'Uang Makan Tetap', 'component_type' => PayrollComponentType::EARNING->value, 'is_variable' => false, 'default_amount' => 500000, 'is_active' => true],
+            ['code' => 'TJ_FUNC', 'name' => 'Tunjangan Fungsional', 'component_type' => PayrollComponentType::EARNING->value, 'is_variable' => false, 'default_amount' => 0, 'is_active' => true],
             
             // Variabel Earnings 
             ['code' => 'UJ', 'name' => 'Uang Jalan / Insentif Trip', 'component_type' => PayrollComponentType::EARNING->value, 'is_variable' => true, 'default_amount' => 0, 'is_active' => true],

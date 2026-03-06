@@ -142,13 +142,15 @@ class EmployeeController extends Controller
                 $employee->specificComponents()->delete();
 
                 $afterComponents = [];
-                foreach ($validated['specific_components'] as $comp) {
-                    $created = $employee->specificComponents()->create([
-                        'payroll_component_id' => $comp['payroll_component_id'],
-                        'amount' => $comp['amount'],
-                        'is_active' => true,
-                    ]);
-                    $afterComponents[] = $created->toArray();
+                if (!empty($validated['specific_components']) && is_array($validated['specific_components'])) {
+                    foreach ($validated['specific_components'] as $comp) {
+                        $created = $employee->specificComponents()->create([
+                            'payroll_component_id' => $comp['payroll_component_id'],
+                            'amount' => $comp['amount'],
+                            'is_active' => true,
+                        ]);
+                        $afterComponents[] = $created->toArray();
+                    }
                 }
 
                 \App\Models\AuditLog::create([

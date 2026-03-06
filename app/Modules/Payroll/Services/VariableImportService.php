@@ -33,6 +33,29 @@ class VariableImportService
 
         DB::beginTransaction();
         try {
+            // Bersihkan sisa data import sebelumnya agar CSV bertindak me-replace (tidak menumpuk)
+            $itemIds = PayrollItem::where('payroll_period_id', $periodId)->pluck('id')->toArray();
+            
+            $affectedItemIds = PayrollItemComponent::whereIn('payroll_item_id', $itemIds)
+                ->where('source', 'IMPORT')
+                ->pluck('payroll_item_id')
+                ->unique()
+                ->toArray();
+
+            if (!empty($affectedItemIds)) {
+                PayrollItemComponent::whereIn('payroll_item_id', $affectedItemIds)
+                    ->where('source', 'IMPORT')
+                    ->delete();
+                
+                // Kalkulasi ulang sementara item yang kehilangan komponen IMPORT lamanya 
+                foreach ($affectedItemIds as $affectedId) {
+                    $item = PayrollItem::find($affectedId);
+                    if ($item) {
+                        $this->recalculateItem($item);
+                    }
+                }
+            }
+
             // Asumsi baris 1 adalah Header
             $header = fgetcsv($handle, 1000, ",");
             

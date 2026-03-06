@@ -12,7 +12,17 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // HR Admin
+        // Super Admin (ID 1)
+        $superAdmin = User::create([
+            'name' => 'Super Administrator',
+            'email' => 'super@yoursite.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'remember_token' => Str::random(10),
+        ]);
+        $superAdmin->roles()->attach(Role::where('name', 'Super Admin')->first()->id);
+
+        // HR Admin (ID 2)
         $hrAdmin = User::create([
             'name' => 'HR Administrator',
             'email' => 'admin@yoursite.com',

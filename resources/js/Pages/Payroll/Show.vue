@@ -26,16 +26,24 @@ const formatDate = (dateString) => {
 // Variable Import Modal State
 const importModal = ref(false);
 const importFile = ref(null);
+const fileInputRef = ref(null);
 const isImporting = ref(false);
+const importErrorMsg = ref('');
+const importErrorsList = ref([]);
 
 const openImportModal = () => importModal.value = true;
 const closeImportModal = () => {
     importModal.value = false;
     importFile.value = null;
+    if (fileInputRef.value) fileInputRef.value.value = '';
+    importErrorMsg.value = '';
+    importErrorsList.value = [];
 };
 
 const handleFileUpload = (e) => {
     importFile.value = e.target.files[0];
+    importErrorMsg.value = '';
+    importErrorsList.value = [];
 };
 
 const submitImport = () => {
@@ -52,7 +60,16 @@ const submitImport = () => {
         closeImportModal();
         router.reload(); // Refresh inertia page
     }).catch(err => {
-        alert('Gagal import: ' + (err.response?.data?.message || err.message));
+        importErrorMsg.value = err.response?.data?.message || err.message || 'Terjadi kesalahan saat meng-upload data.';
+        if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+            importErrorsList.value = err.response.data.errors;
+        } else {
+            importErrorsList.value = [];
+        }
+        // Force user to re-select the file to prevent ERR_UPLOAD_FILE_CHANGED 
+        // if they save changes to the same file while the modal is open.
+        importFile.value = null;
+        if (fileInputRef.value) fileInputRef.value.value = '';
     }).finally(() => {
         isImporting.value = false;
     });
@@ -119,7 +136,15 @@ const regenerateCurrentItem = () => {
 };
 
 const openDetailModal = (item) => {
-    selectedItem.value = item;
+    // Clone and Sort components so IMPORT sources appear first
+    const sortedComponents = [...(item.components || [])].sort((a, b) => {
+        if (a.source === 'IMPORT' && b.source !== 'IMPORT') return -1;
+        if (a.source !== 'IMPORT' && b.source === 'IMPORT') return 1;
+        if (a.component_type !== b.component_type) return a.component_type === 'earning' ? -1 : 1;
+        return 0;
+    });
+
+    selectedItem.value = { ...item, components: sortedComponents };
     detailModal.value = true;
 };
 
@@ -129,14 +154,18 @@ const closeDetailModal = () => {
     isRegenerating.value = false;
 };
 
-// Search Logic
+// Search & Sorting Logic
 const searchFilter = ref(props.filters?.search || '');
+const sortFilter = ref(props.filters?.sort || '');
 let searchTimeout;
 
 const performSearch = () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get(`/payroll-periods/${props.period.id}`, { search: searchFilter.value }, { preserveState: true, replace: true });
+        router.get(`/payroll-periods/${props.period.id}`, { 
+            search: searchFilter.value,
+            sort: sortFilter.value
+        }, { preserveState: true, replace: true });
     }, 500); // 500ms debounce
 };
 </script>
@@ -221,19 +250,33 @@ const performSearch = () => {
                             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                                 <h3 class="font-bold text-lg">Daftar Karyawan (Payroll Items)</h3>
                                 
-                                <!-- Search Input -->
-                                <div class="w-full md:w-64">
-                                    <TextInput 
-                                        type="text" 
-                                        v-model="searchFilter" 
-                                        @input="performSearch"
-                                        class="block w-full" 
-                                        placeholder="Cari Nama / NIK Karyawan..." 
-                                    />
+                                <div class="flex flex-col md:flex-row md:items-center gap-3">
+                                    <!-- Sort Dropdown -->
+                                    <div class="w-full md:w-64">
+                                        <select 
+                                            v-model="sortFilter" 
+                                            @change="performSearch"
+                                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
+                                        >
+                                            <option value="">Sort Berdasar NIK Karyawan</option>
+                                            <option value="tinggi_earning">Nominal Tambahan Terbesar</option>
+                                            <option value="tinggi_deduction">Nominal Potongan Terbesar</option>
+                                        </select>
+                                    </div>
+                                    <!-- Search Input -->
+                                    <div class="w-full md:w-64">
+                                        <TextInput 
+                                            type="text" 
+                                            v-model="searchFilter" 
+                                            @input="performSearch"
+                                            class="block w-full text-sm" 
+                                            placeholder="Cari Nama / NIK Karyawan..." 
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             
-                            <table class="w-full text-left text-sm text-gray-500 mb-4">
+                            <table class="w-full text-left text-sm text-gray-600 mb-4">
                                 <thead class="bg-gray-50 text-xs uppercase text-gray-700">
                                     <tr>
                                         <th scope="col" class="px-6 py-3">ID Internal</th>
@@ -248,8 +291,14 @@ const performSearch = () => {
                                     <tr v-for="item in items.data" :key="item.id" class="border-b bg-white hover:bg-gray-50">
                                         <td class="px-6 py-4">{{ item.employee?.nik_internal || '-' }}</td>
                                         <td class="px-6 py-4 font-semibold text-gray-900">{{ item.employee?.name || '-' }}</td>
-                                        <td class="px-6 py-4 text-right">{{ formatCurrency(item.total_bruto) }}</td>
-                                        <td class="px-6 py-4 text-right text-red-600">{{ formatCurrency(item.total_deduction) }}</td>
+                                        <td class="px-6 py-4 text-right">
+                                            {{ formatCurrency(item.total_bruto) }}
+                                            <div v-if="item.import_earning_total > 0" class="text-[10px] text-orange-600 mt-1" title="Termasuk Import Extra Earning">+ {{ formatCurrency(item.import_earning_total) }} (CSV)</div>
+                                        </td>
+                                        <td class="px-6 py-4 text-right text-red-600">
+                                            {{ formatCurrency(item.total_deduction) }}
+                                            <div v-if="item.import_deduction_total > 0" class="text-[10px] text-orange-600 mt-1" title="Termasuk Import Extra Deduction">+ {{ formatCurrency(item.import_deduction_total) }} (CSV)</div>
+                                        </td>
                                         <td class="px-6 py-4 text-right font-bold text-green-700">{{ formatCurrency(item.total_netto) }}</td>
                                         <td class="px-6 py-4 text-center border-l">
                                             <button @click="openDetailModal(item)" class="text-indigo-600 hover:text-indigo-900 text-sm font-semibold underline decoration-indigo-300 decoration-dotted underline-offset-4">Lihat Rincian</button>
@@ -276,7 +325,7 @@ const performSearch = () => {
                 </div>
 
                 <!-- Right Column (Audit History Timeline) -->
-                <div class="md:col-span-1">
+                <div class="md:col-span-1" >
                     <div class="bg-white shadow-sm sm:rounded-lg p-6">
                         <h3 class="font-bold text-lg mb-6 text-gray-900 border-b pb-2">Jejak Rekam (Audit Trail)</h3>
                         
@@ -318,6 +367,25 @@ const performSearch = () => {
                 </p>
 
                 <div class="mt-4 space-y-4">
+                    <!-- Error Notification Banner -->
+                    <div v-if="importErrorMsg" class="p-4 bg-red-50 border-l-4 border-red-500 rounded-md shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-bold text-red-800">{{ importErrorMsg }}</h3>
+                                <div class="mt-2 text-sm text-red-700" v-if="importErrorsList.length">
+                                    <ul role="list" class="list-disc pl-5 space-y-1">
+                                        <li v-for="(errItem, idx) in importErrorsList" :key="idx">{{ errItem }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="p-4 bg-blue-50 text-blue-800 rounded-md border border-blue-200">
                         <p class="text-sm font-semibold mb-2">Ingin proses isi lebih cepat?</p>
                         <p class="text-xs mb-3 text-blue-700">Unduh Format Template CSV di bawah. Dokumen sudah terisi otomatis dengan NIK seluruh karyawan di daftar periode ini. Anda tinggal set nominalnya!</p>
@@ -334,6 +402,7 @@ const performSearch = () => {
                         <input 
                             type="file" 
                             accept=".csv"
+                            ref="fileInputRef"
                             @change="handleFileUpload" 
                             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" 
                         />
@@ -424,7 +493,12 @@ const performSearch = () => {
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ comp.component_code }}</td>
-                                    <td class="px-4 py-3 font-medium text-gray-900">{{ comp.component_name }}</td>
+                                    <td class="px-4 py-3 font-medium text-gray-900">
+                                        {{ comp.component_name }}
+                                        <span v-if="comp.source === 'IMPORT'" class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-800 uppercase border border-orange-200" title="Berasal dari Import CSV">
+                                            {{ comp.component_type === 'earning' ? 'ADD EARNING' : 'ADD DEDUCTION' }} (CSV)
+                                        </span>
+                                    </td>
                                     <td class="px-4 py-3 text-right font-semibold" :class="comp.component_type === 'earning' ? 'text-green-700' : 'text-red-600'">
                                         {{ formatCurrency(comp.amount) }}
                                     </td>

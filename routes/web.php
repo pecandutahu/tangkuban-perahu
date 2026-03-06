@@ -58,7 +58,7 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:approve-payroll');
             
         Route::post('/payroll-periods/{id}/mark-as-closed', [\App\Http\Controllers\Api\PayrollStatusController::class, 'markAsClosed'])
-            ->middleware('role:HR Admin');
+            ->middleware('role:Super Admin|HR Admin');
     });
 
     // Master Data Routes (Protected by Spatie)

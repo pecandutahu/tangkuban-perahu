@@ -27,9 +27,11 @@ class PayrollTemplateSeeder extends Seeder
         ];
 
         foreach ($templates as $templateName => $componentCodes) {
+            $type = ($templateName === 'Helper') ? 'contract' : 'permanent';
+
             $template = PayrollTemplate::create([
                 'name' => "Template Gaji $templateName",
-                'employment_type' => 'permanent',
+                'employment_type' => $type,
             ]);
 
             foreach ($componentCodes as $code) {

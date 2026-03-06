@@ -32,7 +32,7 @@ const form = useForm({
     payment_method: props.employee.payment_method || 'bank_transfer',
     bank_name: props.employee.bank_name || '',
     bank_account: props.employee.bank_account || '',
-    specific_components: props.employee.specific_components || [],
+    specific_components: props.employee.specific_components || props.employee.specificComponents || [],
 });
 
 const addSpecificComponent = () => {
