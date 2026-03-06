@@ -33,4 +33,23 @@ class PayrollGenerationController extends Controller
             ], 400);
         }
     }
+
+    public function regenerateItem(Request $request, $periodId, $itemId, GeneratePayrollService $service)
+    {
+        try {
+            $item = $service->regenerateItem($periodId, $itemId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data komponen master Karyawan berhasil diperbarui (Regenerate).',
+                'data' => $item
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }

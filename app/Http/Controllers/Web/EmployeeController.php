@@ -36,6 +36,7 @@ class EmployeeController extends Controller
             'departments' => DB::table('departments')->select('id', 'name')->get(),
             'positions' => DB::table('positions')->select('id', 'name')->get(),
             'branches' => DB::table('branch')->select('id', 'name')->get(),
+            'components' => DB::table('payroll_components')->select('id', 'code', 'name', 'component_type', 'is_active')->get(),
             'employee' => new Employee() // empty for create
         ]);
     }
@@ -58,20 +59,51 @@ class EmployeeController extends Controller
             'payment_method' => 'required|string|max:10',
             'bank_name' => 'nullable|string|max:50',
             'bank_account' => 'nullable|string',
+            'specific_components' => 'nullable|array',
+            'specific_components.*.payroll_component_id' => 'required|exists:payroll_components,id',
+            'specific_components.*.amount' => 'required|numeric',
         ]);
 
-        Employee::create($validated);
+        DB::beginTransaction();
+        try {
+            $employee = Employee::create($validated);
 
-        return redirect()->route('employees.index')->with('success', 'Employee created successfully.');
+            if (!empty($validated['specific_components'])) {
+                foreach ($validated['specific_components'] as $comp) {
+                    $employee->specificComponents()->create([
+                        'payroll_component_id' => $comp['payroll_component_id'],
+                        'amount' => $comp['amount'],
+                        'is_active' => true,
+                    ]);
+                }
+                
+                \App\Models\AuditLog::create([
+                    'user_id' => $request->user() ? $request->user()->id : 1,
+                    'entity_type' => Employee::class,
+                    'entity_id' => $employee->id,
+                    'action' => 'update_employee_components',
+                    'before_data' => [],
+                    'after_data' => $validated['specific_components'],
+                    'notes' => 'Menambahkan tunjangan khusus pada saat pembuatan profil.'
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('employees.index')->with('success', 'Employee created successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyimpan data karyawan. ' . $e->getMessage());
+        }
     }
 
     public function edit($id)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = Employee::with('specificComponents.component')->findOrFail($id);
         return Inertia::render('Master/Employee/Form', [
             'departments' => DB::table('departments')->select('id', 'name')->get(),
             'positions' => DB::table('positions')->select('id', 'name')->get(),
             'branches' => DB::table('branch')->select('id', 'name')->get(),
+            'components' => DB::table('payroll_components')->select('id', 'code', 'name', 'component_type', 'is_active')->get(),
             'employee' => $employee
         ]);
     }
@@ -96,11 +128,46 @@ class EmployeeController extends Controller
             'payment_method' => 'required|string|max:10',
             'bank_name' => 'nullable|string|max:50',
             'bank_account' => 'nullable|string',
+            'specific_components' => 'nullable|array',
+            'specific_components.*.payroll_component_id' => 'required|exists:payroll_components,id',
+            'specific_components.*.amount' => 'required|numeric',
         ]);
 
-        $employee->update($validated);
+        DB::beginTransaction();
+        try {
+            $employee->update($validated);
 
-        return redirect()->route('employees.index')->with('success', 'Employee updated successfully.');
+            if ($request->has('specific_components')) {
+                $beforeComponents = $employee->specificComponents()->get()->toArray();
+                $employee->specificComponents()->delete();
+
+                $afterComponents = [];
+                foreach ($validated['specific_components'] as $comp) {
+                    $created = $employee->specificComponents()->create([
+                        'payroll_component_id' => $comp['payroll_component_id'],
+                        'amount' => $comp['amount'],
+                        'is_active' => true,
+                    ]);
+                    $afterComponents[] = $created->toArray();
+                }
+
+                \App\Models\AuditLog::create([
+                    'user_id' => $request->user() ? $request->user()->id : 1,
+                    'entity_type' => Employee::class,
+                    'entity_id' => $employee->id,
+                    'action' => 'update_employee_components',
+                    'before_data' => $beforeComponents,
+                    'after_data' => $afterComponents,
+                    'notes' => 'Memperbarui rincian tunjangan/potongan khusus spesifik milik karyawan.'
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('employees.index')->with('success', 'Employee updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memperbarui data karyawan. ' . $e->getMessage());
+        }
     }
 
     public function destroy($id)

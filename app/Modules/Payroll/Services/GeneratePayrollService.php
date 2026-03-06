@@ -45,12 +45,12 @@ class GeneratePayrollService
                     'end_date' => $data['end_date'],
                     'pay_date' => $data['pay_date'],
                     'period_type' => $data['period_type'],
-                    'created_by' => auth()->id() ?? 'SYSTEM',
+                    'created_by' => \Illuminate\Support\Facades\Auth::id() ?? 'SYSTEM',
                     'status' => 'draft',
                 ]);
 
-                // 4. Ambil semua Karyawan aktif
-                $employees = Employee::where('is_active', true)->get();
+                // 4. Ambil semua Karyawan aktif dengan komponen khususnya
+                $employees = Employee::with('specificComponents.component')->where('is_active', true)->get();
 
                 foreach ($employees as $employee) {
                     // Gunakan Resolver untuk cari template
@@ -76,6 +76,16 @@ class GeneratePayrollService
                     $totalBruto = 0;
                     $totalDeduction = 0;
 
+                    // Buat map/kamus dari komponen spesifik untuk kemudahan override
+                    $specificComponentsMap = [];
+                    foreach ($employee->specificComponents as $specComp) {
+                        if ($specComp->is_active && $specComp->component) {
+                            $specificComponentsMap[$specComp->component->id] = $specComp;
+                        }
+                    }
+
+                    $processedComponentIds = [];
+
                     // 6. Salin semua template komponen ke item
                     foreach ($template->components as $templateComponent) {
                         $component = $templateComponent->component;
@@ -84,7 +94,12 @@ class GeneratePayrollService
                             continue;
                         }
 
-                        $amount = $component->default_amount;
+                        $processedComponentIds[] = $component->id;
+
+                        // Gunakan nilai milik Karyawan Khusus jika ada (Override), kalau tidak pakai default_amount Jabatan
+                        $amount = isset($specificComponentsMap[$component->id]) 
+                            ? $specificComponentsMap[$component->id]->amount 
+                            : $component->default_amount;
 
                         PayrollItemComponent::create([
                             'payroll_item_id' => $item->id,
@@ -93,13 +108,36 @@ class GeneratePayrollService
                             'component_name' => $component->name,
                             'component_type' => $component->component_type,
                             'amount' => $amount,
-                            'source' => 'SYSTEM',
+                            'source' => isset($specificComponentsMap[$component->id]) ? 'OVR_EMP' : 'SYSTEM',
                         ]);
 
                         if ($component->component_type === 'earning') {
                             $totalBruto += $amount;
                         } elseif ($component->component_type === 'deduction') {
                             $totalDeduction += $amount;
+                        }
+                    }
+
+                    // 7. Salin komponen spesifik yang belum tertampung oleh template jabatan (Append)
+                    foreach ($specificComponentsMap as $compId => $specComp) {
+                        if (!in_array($compId, $processedComponentIds)) {
+                            $component = $specComp->component;
+
+                            PayrollItemComponent::create([
+                                'payroll_item_id' => $item->id,
+                                'payroll_component_id' => $component->id,
+                                'component_code' => $component->code,
+                                'component_name' => $component->name,
+                                'component_type' => $component->component_type,
+                                'amount' => $specComp->amount,
+                                'source' => 'OVR_ADD',
+                            ]);
+
+                            if ($component->component_type === 'earning') {
+                                $totalBruto += $specComp->amount;
+                            } elseif ($component->component_type === 'deduction') {
+                                $totalDeduction += $specComp->amount;
+                            }
                         }
                     }
 
@@ -117,5 +155,109 @@ class GeneratePayrollService
             // Selalu lepas lock apapun yang terjadi (berhasil atau error)
             $lock->release();
         }
+    }
+
+    /**
+     * Regenerate spesifik 1 karyawan pada Payroll Period tertentu.
+     * Hanya me-refresh komponen bawaan SYSTEM dan OVERRIDE.
+     */
+    public function regenerateItem($periodId, $itemId)
+    {
+        return DB::transaction(function () use ($periodId, $itemId) {
+            $period = PayrollPeriod::findOrFail($periodId);
+            if ($period->status !== 'draft') {
+                throw new \Exception("Hanya draft yang dapat di-regenerate (diperbarui).");
+            }
+
+            $item = PayrollItem::where('id', $itemId)->where('payroll_period_id', $periodId)->firstOrFail();
+            $employee = Employee::with('specificComponents.component')->find($item->employee_id);
+
+            if (!$employee || !$employee->is_active) {
+                throw new \Exception("Karyawan tidak ditemukan atau sudah tidak aktif bekerja.");
+            }
+
+            // Hapus list komponen bawaan jabatan yang lama
+            PayrollItemComponent::where('payroll_item_id', $item->id)
+                ->whereIn('source', ['SYSTEM', 'OVR_EMP', 'OVR_ADD'])
+                ->delete();
+
+            // Hitung ulang komponen dari template terbaru
+            try {
+                $template = PayrollTemplateResolver::resolve($employee);
+            } catch (\DomainException $e) {
+                $template = null;
+            }
+
+            $specificComponentsMap = [];
+            foreach ($employee->specificComponents as $specComp) {
+                if ($specComp->is_active && $specComp->component) {
+                    $specificComponentsMap[$specComp->component->id] = $specComp;
+                }
+            }
+
+            $processedComponentIds = [];
+
+            if ($template) {
+                foreach ($template->components as $templateComponent) {
+                    $component = $templateComponent->component;
+                    
+                    if (!$component || !$component->is_active) {
+                        continue;
+                    }
+
+                    $processedComponentIds[] = $component->id;
+
+                    $amount = isset($specificComponentsMap[$component->id]) 
+                        ? $specificComponentsMap[$component->id]->amount 
+                        : $component->default_amount;
+
+                    PayrollItemComponent::create([
+                        'payroll_item_id' => $item->id,
+                        'payroll_component_id' => $component->id,
+                        'component_code' => $component->code,
+                        'component_name' => $component->name,
+                        'component_type' => $component->component_type,
+                        'amount' => $amount,
+                        'source' => isset($specificComponentsMap[$component->id]) ? 'OVR_EMP' : 'SYSTEM',
+                    ]);
+                }
+            }
+
+            foreach ($specificComponentsMap as $compId => $specComp) {
+                if (!in_array($compId, $processedComponentIds)) {
+                    $component = $specComp->component;
+                    PayrollItemComponent::create([
+                        'payroll_item_id' => $item->id,
+                        'payroll_component_id' => $component->id,
+                        'component_code' => $component->code,
+                        'component_name' => $component->name,
+                        'component_type' => $component->component_type,
+                        'amount' => $specComp->amount,
+                        'source' => 'OVR_ADD',
+                    ]);
+                }
+            }
+
+            // Recalculate gabungan dengan IMPORT/MANUAL
+            $totalBruto = 0;
+            $totalDeduction = 0;
+            $allComponents = PayrollItemComponent::where('payroll_item_id', $item->id)->get();
+            
+            foreach ($allComponents as $comp) {
+                if ($comp->component_type === 'earning') {
+                    $totalBruto += $comp->amount;
+                } elseif ($comp->component_type === 'deduction') {
+                    $totalDeduction += $comp->amount;
+                }
+            }
+
+            $item->update([
+                'total_bruto' => $totalBruto,
+                'total_deduction' => $totalDeduction,
+                'total_netto' => $totalBruto - $totalDeduction,
+            ]);
+
+            return $item;
+        });
     }
 }

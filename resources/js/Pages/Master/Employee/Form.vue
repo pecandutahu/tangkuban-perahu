@@ -10,6 +10,7 @@ const props = defineProps({
     departments: Array,
     positions: Array,
     branches: Array,
+    components: Array,
     employee: Object, // Empty object for create, populated object for edit
 });
 
@@ -31,7 +32,19 @@ const form = useForm({
     payment_method: props.employee.payment_method || 'bank_transfer',
     bank_name: props.employee.bank_name || '',
     bank_account: props.employee.bank_account || '',
+    specific_components: props.employee.specific_components || [],
 });
+
+const addSpecificComponent = () => {
+    form.specific_components.push({
+        payroll_component_id: '',
+        amount: 0,
+    });
+};
+
+const removeSpecificComponent = (index) => {
+    form.specific_components.splice(index, 1);
+};
 
 const submit = () => {
     if (isEditing) {
@@ -191,6 +204,55 @@ const submit = () => {
                                         <InputError :message="form.errors.bank_account" class="mt-2" />
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Bagian Tunjangan & Potongan Khusus -->
+                        <div class="mt-10 border-t pt-8">
+                            <h3 class="font-bold text-gray-900 border-b pb-2 mb-4">Tunjangan & Potongan Khusus (Personal Allowance)</h3>
+                            <p class="text-sm text-gray-500 mb-6">
+                                Anda bisa mendaftarkan komponen gaji khusus yang nominalnya hanya berlaku dan <strong>menimpa (override)</strong> tarif bawaan untuk karyawan ini saja. Misalnya: Tunjangan Kinerja atau Tunjangan Khusus tertentu.
+                            </p>
+                            
+                            <div class="overflow-hidden bg-white shadow-sm ring-1 ring-gray-200 sm:rounded-lg">
+                                <table class="w-full text-left text-sm text-gray-600">
+                                    <thead class="bg-gray-50 text-xs uppercase text-gray-700">
+                                        <tr>
+                                            <th class="px-6 py-3 font-semibold">Pilih Komponen Tunjangan / Potongan</th>
+                                            <th class="px-6 py-3 font-semibold">Nominal Dasar Pegawai (Rp)</th>
+                                            <th class="px-6 py-3 font-semibold text-center w-24">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        <tr v-for="(comp, index) in form.specific_components" :key="index" class="bg-white">
+                                            <td class="px-6 py-4">
+                                                <select v-model="comp.payroll_component_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                                    <option value="" disabled>-- Pilih Komponen --</option>
+                                                    <option v-for="c in components" :key="c.id" :value="c.id">
+                                                        [{{ c.component_type === 'earning' ? '+' : '-' }}] {{ c.code }} - {{ c.name }}
+                                                    </option>
+                                                </select>
+                                                <InputError :message="form.errors[`specific_components.${index}.payroll_component_id`]" class="mt-2" />
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <TextInput type="number" v-model="comp.amount" class="block w-full text-right" min="0" required />
+                                                <InputError :message="form.errors[`specific_components.${index}.amount`]" class="mt-2" />
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                <button type="button" @click="removeSpecificComponent(index)" class="text-red-600 hover:text-red-900 font-bold p-2 bg-red-50 rounded-md ring-1 ring-red-200">Hapus</button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="form.specific_components.length === 0">
+                                            <td colspan="3" class="px-6 py-6 text-center text-gray-500 italic bg-gray-50">Belum ada rincian komponen yang terdaftar khusus untuknya.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="mt-4 flex justify-start">
+                                <button type="button" @click="addSpecificComponent" class="inline-flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-md font-semibold text-xs text-indigo-700 hover:bg-indigo-100 uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                    + Tambah Rincian
+                                </button>
                             </div>
                         </div>
 

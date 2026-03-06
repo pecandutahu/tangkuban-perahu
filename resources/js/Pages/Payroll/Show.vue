@@ -10,6 +10,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 
 const props = defineProps({
     period: Object,
+    items: Object, // Tambahan properti paginated items
+    filters: Object, // Filter pencarian
 });
 
 const formatCurrency = (val) => {
@@ -92,6 +94,51 @@ const submitAction = () => {
         actionData.value.isProcessing = false;
     });
 };
+
+// Detail Item Modal State
+const detailModal = ref(false);
+const selectedItem = ref(null);
+const isRegenerating = ref(false);
+
+const regenerateCurrentItem = () => {
+    if (!selectedItem.value) return;
+    
+    isRegenerating.value = true;
+    window.axios.post(`/payroll-periods/${props.period.id}/items/${selectedItem.value.id}/regenerate`)
+        .then(res => {
+            alert(res.data.message || 'Selesai sinkronisasi.');
+            closeDetailModal();
+            router.reload();
+        })
+        .catch(err => {
+            alert('Gagal Regenerate: ' + (err.response?.data?.message || err.message));
+        })
+        .finally(() => {
+            isRegenerating.value = false;
+        });
+};
+
+const openDetailModal = (item) => {
+    selectedItem.value = item;
+    detailModal.value = true;
+};
+
+const closeDetailModal = () => {
+    detailModal.value = false;
+    selectedItem.value = null;
+    isRegenerating.value = false;
+};
+
+// Search Logic
+const searchFilter = ref(props.filters?.search || '');
+let searchTimeout;
+
+const performSearch = () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        router.get(`/payroll-periods/${props.period.id}`, { search: searchFilter.value }, { preserveState: true, replace: true });
+    }, 500); // 500ms debounce
+};
 </script>
 
 <template>
@@ -163,15 +210,30 @@ const submitAction = () => {
                          </div>
                          <div>
                              <p class="text-sm text-gray-500 font-semibold mb-1">Total Karyawan</p>
-                             <p class="text-lg font-bold">{{ period.items.length }}</p>
+                             <p class="text-lg font-bold">{{ items.total || period.items?.length || 0 }}</p>
                          </div>
                     </div>
 
                     <!-- Items Table -->
                     <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg mb-6">
                         <div class="p-6 text-gray-900 border-b overflow-x-auto">
-                            <h3 class="font-bold text-lg mb-4">Daftar Karyawan (Payroll Items)</h3>
-                            <table class="w-full text-left text-sm text-gray-500">
+                            <!-- Header & Search -->
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                <h3 class="font-bold text-lg">Daftar Karyawan (Payroll Items)</h3>
+                                
+                                <!-- Search Input -->
+                                <div class="w-full md:w-64">
+                                    <TextInput 
+                                        type="text" 
+                                        v-model="searchFilter" 
+                                        @input="performSearch"
+                                        class="block w-full" 
+                                        placeholder="Cari Nama / NIK Karyawan..." 
+                                    />
+                                </div>
+                            </div>
+                            
+                            <table class="w-full text-left text-sm text-gray-500 mb-4">
                                 <thead class="bg-gray-50 text-xs uppercase text-gray-700">
                                     <tr>
                                         <th scope="col" class="px-6 py-3">ID Internal</th>
@@ -179,21 +241,36 @@ const submitAction = () => {
                                         <th scope="col" class="px-6 py-3 text-right">Total Bruto</th>
                                         <th scope="col" class="px-6 py-3 text-right">Total Potongan (Deduction)</th>
                                         <th scope="col" class="px-6 py-3 text-right">Netto Bersih</th>
+                                        <th scope="col" class="px-6 py-3 text-center border-l">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="item in period.items" :key="item.id" class="border-b bg-white hover:bg-gray-50">
+                                    <tr v-for="item in items.data" :key="item.id" class="border-b bg-white hover:bg-gray-50">
                                         <td class="px-6 py-4">{{ item.employee?.nik_internal || '-' }}</td>
                                         <td class="px-6 py-4 font-semibold text-gray-900">{{ item.employee?.name || '-' }}</td>
                                         <td class="px-6 py-4 text-right">{{ formatCurrency(item.total_bruto) }}</td>
                                         <td class="px-6 py-4 text-right text-red-600">{{ formatCurrency(item.total_deduction) }}</td>
                                         <td class="px-6 py-4 text-right font-bold text-green-700">{{ formatCurrency(item.total_netto) }}</td>
+                                        <td class="px-6 py-4 text-center border-l">
+                                            <button @click="openDetailModal(item)" class="text-indigo-600 hover:text-indigo-900 text-sm font-semibold underline decoration-indigo-300 decoration-dotted underline-offset-4">Lihat Rincian</button>
+                                        </td>
                                     </tr>
-                                    <tr v-if="period.items.length === 0">
-                                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">Belum ada Karyawan (Kemungkinan saat generate tdk ada pegawai aktif).</td>
+                                    <tr v-if="items.data.length === 0">
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">Belum ada Karyawan atau Tidak Ditemukan.</td>
                                     </tr>
                                 </tbody>
                             </table>
+
+                            <!-- Pagination -->
+                            <div class="mt-4 flex flex-wrap gap-1 justify-center" v-if="items.links && items.links.length > 3">
+                                <template v-for="(link, key) in items.links" :key="key">
+                                    <div v-if="link.url === null" class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded bg-gray-50" v-html="link.label" />
+                                    <a v-else
+                                        class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 focus:border-indigo-500 focus:text-indigo-500"
+                                        :class="{ 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 hover:text-white pointer-events-none': link.active }"
+                                        :href="link.url" v-html="link.label" />
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -306,6 +383,70 @@ const submitAction = () => {
                     >
                         {{ actionData.isProcessing ? 'Memproses...' : 'Proses Aksi' }}
                     </PrimaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Detail Rincian Gaji Modal -->
+        <Modal :show="detailModal" @close="closeDetailModal" maxWidth="2xl">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 border-b pb-3">Rincian Komponen Gaji: <span class="text-indigo-700">{{ selectedItem?.employee?.name || '-' }}</span> ({{ selectedItem?.employee?.nik_internal || '-' }})</h2>
+                
+                <div v-if="selectedItem">
+                    <div class="grid grid-cols-2 gap-4 mb-5 p-4 rounded-lg bg-gray-50 border border-gray-100 shadow-inner">
+                        <div>
+                            <span class="text-gray-500 block text-xs uppercase font-bold tracking-wider mb-1">Total Pendapatan (Bruto)</span>
+                            <span class="font-bold text-xl text-gray-900">{{ formatCurrency(selectedItem.total_bruto) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block text-xs uppercase font-bold tracking-wider mb-1">Total Potongan (Deduction)</span>
+                            <span class="font-bold text-xl text-red-600">{{ formatCurrency(selectedItem.total_deduction) }}</span>
+                        </div>
+                    </div>
+
+                    <h4 class="font-bold text-md mb-3 text-gray-800">Daftar Komponen:</h4>
+                    <div class="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+                        <table class="w-full text-left text-sm text-gray-600 bg-white">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-700 border-b">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold">Tipe</th>
+                                    <th class="px-4 py-3 font-semibold">Kode</th>
+                                    <th class="px-4 py-3 font-semibold">Nama Komponen</th>
+                                    <th class="px-4 py-3 text-right font-semibold">Nominal</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="comp in selectedItem.components" :key="comp.id" class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 text-[10px] font-bold uppercase rounded-md"
+                                            :class="comp.component_type === 'earning' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                                            {{ comp.component_type }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ comp.component_code }}</td>
+                                    <td class="px-4 py-3 font-medium text-gray-900">{{ comp.component_name }}</td>
+                                    <td class="px-4 py-3 text-right font-semibold" :class="comp.component_type === 'earning' ? 'text-green-700' : 'text-red-600'">
+                                        {{ formatCurrency(comp.amount) }}
+                                    </td>
+                                </tr>
+                                <tr v-if="!selectedItem.components || selectedItem.components.length === 0">
+                                    <td colspan="4" class="px-4 py-6 text-center text-gray-400 italic bg-gray-50">Tidak ada rincian komponen yang tercatat di Sistem.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <SecondaryButton 
+                        v-if="period.status === 'draft'"
+                        @click="regenerateCurrentItem" 
+                        class="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                        :disabled="isRegenerating"
+                    >
+                        {{ isRegenerating ? 'Menyinkronkan...' : '♻️ Refresh Data Master (Regenerate)' }}
+                    </SecondaryButton>
+                    <PrimaryButton @click="closeDetailModal" class="bg-indigo-600 hover:bg-indigo-700">Tutup Rincian</PrimaryButton>
                 </div>
             </div>
         </Modal>

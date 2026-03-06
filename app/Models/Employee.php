@@ -47,4 +47,9 @@ class Employee extends Model
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function specificComponents()
+    {
+        return $this->hasMany(EmployeeComponent::class, 'employee_id');
+    }
 }

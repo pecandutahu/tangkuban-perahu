@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/payroll-periods/generate', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'generate'])
             ->middleware('permission:generate-payroll');
             
+        Route::post('/payroll-periods/{id}/items/{itemId}/regenerate', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'regenerateItem'])
+            ->middleware('permission:generate-payroll');
+            
         Route::get('/payroll-periods/{id}/import-template', [\App\Http\Controllers\Api\PayrollImportController::class, 'downloadTemplate'])
             ->middleware('permission:edit-payroll');
             
