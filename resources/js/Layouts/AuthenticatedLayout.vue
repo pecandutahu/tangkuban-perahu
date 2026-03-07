@@ -81,6 +81,8 @@ const showingNavigationDropdown = ref(false);
                                             <DropdownLink :href="route('templates.index')">Template Gaji</DropdownLink>
                                             <div class="border-t border-gray-100"></div>
                                             <DropdownLink :href="route('employees.index')">Karyawan</DropdownLink>
+                                            <div class="border-t border-gray-100"></div>
+                                            <DropdownLink :href="route('ptkp-statuses.index')">Status PTKP</DropdownLink>
                                         </template>
                                     </Dropdown>
                                 </div>
@@ -112,6 +114,8 @@ const showingNavigationDropdown = ref(false);
                                         </template>
 
                                         <template #content>
+                                            <DropdownLink :href="route('settings.index')">Sistem & Pajak</DropdownLink>
+                                            <div class="border-t border-gray-100"></div>
                                             <DropdownLink :href="route('users.index')">Daftar Akun Pengguna</DropdownLink>
                                             <DropdownLink :href="route('roles.index')">Hak Akses Jabatan</DropdownLink>
                                             <div class="border-t border-gray-100"></div>

@@ -29,9 +29,13 @@ class PayrollTemplateSeeder extends Seeder
         foreach ($templates as $templateName => $componentCodes) {
             $type = ($templateName === 'Helper') ? 'contract' : 'permanent';
 
+            // Coba cari Master Position yang mirip dengan nama Template
+            $position = \App\Models\Position::where('name', 'ilike', '%' . $templateName . '%')->first();
+
             $template = PayrollTemplate::create([
                 'name' => "Template Gaji $templateName",
                 'employment_type' => $type,
+                'position_id' => $position ? $position->id : null,
             ]);
 
             foreach ($componentCodes as $code) {

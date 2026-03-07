@@ -176,9 +176,9 @@ class GeneratePayrollService
                 throw new \Exception("Karyawan tidak ditemukan atau sudah tidak aktif bekerja.");
             }
 
-            // Hapus list komponen bawaan jabatan yang lama
+            // Hapus list komponen bawaan jabatan dan pajak yang lama
             PayrollItemComponent::where('payroll_item_id', $item->id)
-                ->whereIn('source', ['SYSTEM', 'OVR_EMP', 'OVR_ADD'])
+                ->whereIn('source', ['SYSTEM', 'OVR_EMP', 'OVR_ADD', 'SYSTEM_TAX'])
                 ->delete();
 
             // Hitung ulang komponen dari template terbaru
@@ -251,6 +251,37 @@ class GeneratePayrollService
                 }
             }
 
+            // Hitung Pajak PPh21
+            $taxStrategy = \App\Modules\Payroll\Calculators\Pph21CalculatorFactory::make();
+            $pph21Amount = $taxStrategy ? $taxStrategy->calculate($employee, $totalBruto) : 0;
+
+            if ($pph21Amount > 0) {
+                // Pastikan ada Master Komponen khusus untuk PPh 21
+                $taxComponent = \App\Models\PayrollComponent::firstOrCreate(
+                    ['code' => 'TAX_PPH21'],
+                    [
+                        'name' => 'Potongan PPh 21',
+                        'component_type' => 'deduction',
+                        'is_taxable' => false,
+                        'default_amount' => 0,
+                        'is_active' => true,
+                    ]
+                );
+
+                \App\Models\PayrollItemComponent::create([
+                    'payroll_item_id' => $item->id,
+                    'payroll_component_id' => $taxComponent->id,
+                    'component_code' => $taxComponent->code,
+                    'component_name' => $taxComponent->name,
+                    'component_type' => 'deduction',
+                    'amount' => $pph21Amount,
+                    'source' => 'SYSTEM_TAX',
+                ]);
+
+                // Tambahkan pajak ke total potongan
+                $totalDeduction += $pph21Amount;
+            }
+
             $item->update([
                 'total_bruto' => $totalBruto,
                 'total_deduction' => $totalDeduction,
@@ -258,6 +289,33 @@ class GeneratePayrollService
             ]);
 
             return $item;
+        });
+    }
+
+    /**
+     * Regenerate SELURUH karyawan pada satu Payroll Period.
+     * Hanya me-refresh komponen bawaan SYSTEM dan OVERRIDE. Data IMPORT (CSV) tetap utuh.
+     */
+    public function regeneratePeriod($periodId)
+    {
+        return DB::transaction(function () use ($periodId) {
+            $period = PayrollPeriod::findOrFail($periodId);
+            if ($period->status !== 'draft') {
+                throw new \Exception("Hanya draft yang dapat di-regenerate (diperbarui).");
+            }
+
+            $items = PayrollItem::where('payroll_period_id', $periodId)->get();
+            
+            foreach ($items as $item) {
+                // Kita bisa melakukan pemanggilan langsung fungsi regenerateItem 
+                // Karena kita sudah ada di dalam db transaction.
+                // Parameter kedua adalah itemId. $this->regenerateItem($periodId, $item->id)
+                // Wait: regenerateItem also has its own DB::transaction, which is safe in Laravel (nested transaction),
+                // tapi alangkah baiknya kita hindari recursive transaction wrap jika perlu, atau panggil saja langsung.
+                $this->regenerateItem($periodId, $item->id);
+            }
+
+            return $period;
         });
     }
 }

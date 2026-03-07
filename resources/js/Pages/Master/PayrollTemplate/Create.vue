@@ -8,11 +8,13 @@ import TextInput from '@/Components/TextInput.vue';
 
 const props = defineProps({
     components: Array,
+    positions: Array,
 });
 
 const form = useForm({
     name: '',
     employment_type: 'permanent',
+    position_id: '',
     components: [], // array of component IDs
 });
 
@@ -56,6 +58,15 @@ const submit = () => {
                                     <option value="freelance">Freelance / Harian</option>
                                 </select>
                                 <InputError :message="form.errors.employment_type" class="mt-2" />
+                            </div>
+
+                            <div class="col-span-2">
+                                <InputLabel for="position_id" value="Target Jabatan (Spesifik)" />
+                                <select id="position_id" v-model="form.position_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                    <option value="">Semua Jabatan (Berlaku General)</option>
+                                    <option v-for="pos in positions" :key="pos.id" :value="pos.id">{{ pos.name }}</option>
+                                </select>
+                                <InputError :message="form.errors.position_id" class="mt-2" />
                             </div>
                         </div>
 

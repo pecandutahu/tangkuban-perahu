@@ -154,6 +154,25 @@ const closeDetailModal = () => {
     isRegenerating.value = false;
 };
 
+// Regenerate All Logic
+const isRegeneratingAll = ref(false);
+const confirmRegenerateAll = () => {
+    if (confirm("Anda yakin ingin mensinkronisasi ulang SELURUH 300+ Karyawan dengan template Data Master terbaru?\n\nCATATAN AMAN: Data lembur atau tambahan ekstra yang berasal dari Import CSV sebelumnya TIDAK AKAN HILANG dan akan dikalkulasi ulang.\nTunggu hingga proses tuntas.")) {
+        isRegeneratingAll.value = true;
+        window.axios.post(`/payroll-periods/${props.period.id}/regenerate-all`)
+            .then(res => {
+                alert(res.data.message || 'Berhasil mensinkronisasi semua data karyawan.');
+                router.reload();
+            })
+            .catch(err => {
+                alert('Gagal Regenerate All: ' + (err.response?.data?.message || err.message));
+            })
+            .finally(() => {
+                isRegeneratingAll.value = false;
+            });
+    }
+};
+
 // Search & Sorting Logic
 const searchFilter = ref(props.filters?.search || '');
 const sortFilter = ref(props.filters?.sort || '');
@@ -188,6 +207,16 @@ const performSearch = () => {
                     <!-- CSV Import only allowed in draft -->
                     <SecondaryButton v-if="period.status === 'draft' && $page.props.auth.user.permissions.includes('edit-payroll')" @click="openImportModal">
                         Import Variable (CSV)
+                    </SecondaryButton>
+
+                    <SecondaryButton 
+                        v-if="period.status === 'draft' && $page.props.auth.user.permissions.includes('generate-payroll')" 
+                        @click="confirmRegenerateAll" 
+                        class="text-indigo-600 border-indigo-300 hover:bg-indigo-50"
+                        :disabled="isRegeneratingAll"
+                        :class="{'opacity-50 cursor-wait': isRegeneratingAll}"
+                    >
+                        {{ isRegeneratingAll ? '⏳ Menyinkronkan 300+ Data...' : '♻️ Sync Master (Regenerate All)' }}
                     </SecondaryButton>
 
                     <PrimaryButton v-if="period.status === 'draft' && $page.props.auth.user.permissions.includes('generate-payroll')" @click="openActionModal('Kirim untuk Review', 'Kirim Review', 'mark-as-reviewed')">

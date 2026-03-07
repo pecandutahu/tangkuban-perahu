@@ -11,6 +11,7 @@ const props = defineProps({
     positions: Array,
     branches: Array,
     components: Array,
+    ptkpStatuses: Array,
     employee: Object, // Empty object for create, populated object for edit
 });
 
@@ -108,7 +109,10 @@ const submit = () => {
 
                                 <div class="mb-4">
                                     <InputLabel for="ptkp_status" value="Status PTKP (Pajak)" />
-                                    <TextInput id="ptkp_status" type="text" v-model="form.ptkp_status" class="mt-1 block w-full" placeholder="Contoh: TK/0, K/1" />
+                                    <select id="ptkp_status" v-model="form.ptkp_status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                        <option value="">-- Kosongkan / Default --</option>
+                                        <option v-for="ptkp in ptkpStatuses" :key="ptkp.code" :value="ptkp.code">{{ ptkp.code }} - {{ ptkp.description }}</option>
+                                    </select>
                                     <InputError :message="form.errors.ptkp_status" class="mt-2" />
                                 </div>
 

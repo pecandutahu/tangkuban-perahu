@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/payroll-periods/generate', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'generate'])
             ->middleware('permission:generate-payroll');
             
+        Route::post('/payroll-periods/{id}/regenerate-all', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'regeneratePeriod'])
+            ->middleware('permission:generate-payroll');
+
         Route::post('/payroll-periods/{id}/items/{itemId}/regenerate', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'regenerateItem'])
             ->middleware('permission:generate-payroll');
             
@@ -69,6 +72,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('payroll-components', \App\Http\Controllers\Web\PayrollComponentController::class)->except(['create', 'edit', 'show']);
         Route::resource('templates', \App\Http\Controllers\Web\PayrollTemplateController::class)->except(['show']);
         Route::resource('employees', \App\Http\Controllers\Web\EmployeeController::class)->except(['show']);
+        Route::resource('ptkp-statuses', \App\Http\Controllers\Web\PtkpStatusController::class)->except(['create', 'edit', 'show']);
     });
 
     // Settings / User Management Routes (Super Admin Only)
@@ -76,6 +80,10 @@ Route::middleware('auth')->group(function () {
         Route::resource('roles', \App\Http\Controllers\Web\RoleController::class)->except(['show']);
         Route::resource('users', \App\Http\Controllers\Web\UserController::class)->except(['show']);
         Route::resource('permissions', \App\Http\Controllers\Web\PermissionController::class)->except(['show']);
+        
+        // Global Settings
+        Route::get('/settings', [\App\Http\Controllers\Web\SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [\App\Http\Controllers\Web\SettingController::class, 'update'])->name('settings.update');
     });
 });
 

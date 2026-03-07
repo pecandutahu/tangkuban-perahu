@@ -9,6 +9,7 @@ import TextInput from '@/Components/TextInput.vue';
 const props = defineProps({
     template: Object,
     components: Array,
+    positions: Array,
 });
 
 // Map already assigned components to array of IDs
@@ -17,6 +18,7 @@ const assignedComponentIds = props.template.components.map(c => c.payroll_compon
 const form = useForm({
     name: props.template.name,
     employment_type: props.template.employment_type,
+    position_id: props.template.position_id || '',
     components: assignedComponentIds,
 });
 
@@ -60,6 +62,15 @@ const submit = () => {
                                     <option value="freelance">Freelance / Harian</option>
                                 </select>
                                 <InputError :message="form.errors.employment_type" class="mt-2" />
+                            </div>
+
+                            <div class="col-span-2">
+                                <InputLabel for="position_id" value="Target Jabatan (Spesifik)" />
+                                <select id="position_id" v-model="form.position_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                    <option value="">Semua Jabatan (Berlaku General)</option>
+                                    <option v-for="pos in positions" :key="pos.id" :value="pos.id">{{ pos.name }}</option>
+                                </select>
+                                <InputError :message="form.errors.position_id" class="mt-2" />
                             </div>
                         </div>
 

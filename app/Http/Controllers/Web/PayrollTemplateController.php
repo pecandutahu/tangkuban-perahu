@@ -12,7 +12,7 @@ class PayrollTemplateController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PayrollTemplate::withCount('components')->orderBy('name');
+        $query = PayrollTemplate::with(['position'])->withCount('components')->orderBy('name');
         
         if ($request->filled('search')) {
             $search = $request->search;
@@ -31,7 +31,12 @@ class PayrollTemplateController extends Controller
     {
         // Fetch all active components to assign to template
         $components = PayrollComponent::where('is_active', true)->orderBy('name')->get();
-        return Inertia::render('Master/PayrollTemplate/Create', ['components' => $components]);
+        $positions = \App\Models\Position::orderBy('name')->get();
+
+        return Inertia::render('Master/PayrollTemplate/Create', [
+            'components' => $components,
+            'positions' => $positions
+        ]);
     }
 
     public function store(Request $request)
@@ -39,6 +44,7 @@ class PayrollTemplateController extends Controller
          $validated = $request->validate([
             'name' => 'required|string|max:100',
             'employment_type' => 'required|string|max:50',
+            'position_id' => 'nullable|exists:positions,id',
             'components' => 'array',
             'components.*' => 'exists:payroll_components,id',
         ]);
@@ -46,6 +52,7 @@ class PayrollTemplateController extends Controller
         $template = PayrollTemplate::create([
             'name' => $validated['name'],
             'employment_type' => $validated['employment_type'],
+            'position_id' => $validated['position_id'],
         ]);
 
         if (!empty($validated['components'])) {
@@ -64,10 +71,12 @@ class PayrollTemplateController extends Controller
     {
         $template = PayrollTemplate::with('components:id,payroll_template_id,payroll_component_id')->findOrFail($id);
         $components = PayrollComponent::where('is_active', true)->orderBy('name')->get();
+        $positions = \App\Models\Position::orderBy('name')->get();
 
         return Inertia::render('Master/PayrollTemplate/Edit', [
             'template' => $template,
             'components' => $components,
+            'positions' => $positions,
         ]);
     }
 
@@ -78,6 +87,7 @@ class PayrollTemplateController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'employment_type' => 'required|string|max:50',
+            'position_id' => 'nullable|exists:positions,id',
             'components' => 'array',
             'components.*' => 'exists:payroll_components,id',
         ]);
@@ -85,6 +95,7 @@ class PayrollTemplateController extends Controller
         $template->update([
             'name' => $validated['name'],
             'employment_type' => $validated['employment_type'],
+            'position_id' => $validated['position_id'],
         ]);
 
         // Sync components: delete old and recreate new

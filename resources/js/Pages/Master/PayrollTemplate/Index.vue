@@ -60,6 +60,7 @@ const deleteData = (id) => {
                             <thead class="bg-gray-50 text-xs uppercase text-gray-700">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 border-b">Nama Template</th>
+                                    <th scope="col" class="px-6 py-3 border-b">Target Jabatan</th>
                                     <th scope="col" class="px-6 py-3 border-b">Tipe Karyawan</th>
                                     <th scope="col" class="px-6 py-3 border-b text-center">Jumlah Komponen</th>
                                     <th scope="col" class="px-6 py-3 border-b text-center">Aksi</th>
@@ -68,6 +69,10 @@ const deleteData = (id) => {
                             <tbody>
                                 <tr v-for="item in templates.data" :key="item.id" class="border-b bg-white hover:bg-gray-50">
                                     <td class="px-6 py-4 font-semibold text-gray-900 border-r">{{ item.name }}</td>
+                                    <td class="px-6 py-4 border-r uppercase text-sm">
+                                        <span v-if="item.position" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">{{ item.position.name }}</span>
+                                        <span v-else class="text-gray-400 italic font-mono text-xs">UMUM (General)</span>
+                                    </td>
                                     <td class="px-6 py-4 border-r uppercase">{{ item.employment_type }}</td>
                                     <td class="px-6 py-4 text-center border-r">
                                         <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded">

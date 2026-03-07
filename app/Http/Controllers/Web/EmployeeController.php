@@ -37,6 +37,7 @@ class EmployeeController extends Controller
             'positions' => DB::table('positions')->select('id', 'name')->get(),
             'branches' => DB::table('branch')->select('id', 'name')->get(),
             'components' => DB::table('payroll_components')->select('id', 'code', 'name', 'component_type', 'is_active')->get(),
+            'ptkpStatuses' => DB::table('ptkp_statuses')->select('code', 'description')->orderBy('code')->get(),
             'employee' => new Employee() // empty for create
         ]);
     }
@@ -104,6 +105,7 @@ class EmployeeController extends Controller
             'positions' => DB::table('positions')->select('id', 'name')->get(),
             'branches' => DB::table('branch')->select('id', 'name')->get(),
             'components' => DB::table('payroll_components')->select('id', 'code', 'name', 'component_type', 'is_active')->get(),
+            'ptkpStatuses' => DB::table('ptkp_statuses')->select('code', 'description')->orderBy('code')->get(),
             'employee' => $employee
         ]);
     }

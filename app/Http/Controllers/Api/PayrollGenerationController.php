@@ -52,4 +52,23 @@ class PayrollGenerationController extends Controller
             ], 400);
         }
     }
+
+    public function regeneratePeriod(Request $request, $id, GeneratePayrollService $service)
+    {
+        try {
+            $period = $service->regeneratePeriod($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Seluruh data karyawan pada periode ini berhasil disinkronisasi dengan Master Data terbaru.',
+                'data' => $period
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }
