@@ -1,66 +1,237 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Payroll Trucking System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem penggajian berbasis web untuk perusahaan trucking, dibangun menggunakan **Laravel 11** + **Inertia.js** + **Vue 3**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Tech Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Layer | Teknologi |
+|-------|-----------|
+| Backend | Laravel 11 (PHP 8.2+) |
+| Frontend | Vue 3 (Composition API) + Inertia.js |
+| Database | PostgreSQL (atau MySQL) |
+| Auth | Laravel Breeze + Spatie Laravel Permission |
+| Styling | Tailwind CSS |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 📦 Instalasi
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```bash
+git clone <repo-url>
+cd payroll-trucking
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+composer install
+npm install
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+cp .env.example .env
+php artisan key:generate
 
-## Laravel Sponsors
+# Sesuaikan konfigurasi database di .env
+php artisan migrate:refresh --seed
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+npm run dev
+```
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## 🗂️ Fitur Utama
 
-## Contributing
+### 1. Master Data
+- **Karyawan** — Data lengkap: jabatan, cabang, tipe kerja, bank, PTKP
+- **Cabang (Branch)** — Termasuk konfigurasi **UMR per cabang** (basis kalkulasi BPJS)
+- **Jabatan (Position)** & **Departemen**
+- **Komponen Gaji (Payroll Component)** — Earning dan Deduction
+- **Template Gaji (Payroll Template)** — Set komponen per jabatan/tipe kerja
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. Generate Payroll
+- Kalkulator gaji bulanan per periode
+- Komponen Earning + Deduction otomatis dari template
+- Override komponen spesifik per karyawan (`employee_components`)
+- Ekspor slip gaji
 
-## Code of Conduct
+### 3. BPJS Otomatis (Hybrid Approach)
+- 6 komponen BPJS ter-generate otomatis saat input/update karyawan:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+  | Kode | Tipe | Keterangan |
+  |------|------|-----------|
+  | `BPJS_TK` | Deduction | Iuran TK karyawan (2% JHT + 1% JP) |
+  | `BPJS_KES` | Deduction | Iuran Kes karyawan (1%, plafon 12jt) |
+  | `TJ_BPJS_TK_CO` | Earning | Tunjangan TK perusahaan (3.7% JHT + 2% JP + JKK + JKm) |
+  | `TJ_BPJS_KES_CO` | Earning | Tunjangan Kes perusahaan (4%, plafon 12jt) |
+  | `POT_BPJS_TK_CO` | Deduction | Offset TK perusahaan (= TJ_BPJS_TK_CO) |
+  | `POT_BPJS_KES_CO` | Deduction | Offset Kes perusahaan (= TJ_BPJS_KES_CO) |
 
-## Security Vulnerabilities
+- **Basis perhitungan**: `max(Gaji Pokok karyawan, UMR cabang)`
+- Semua tarif dapat dikonfigurasi dari **Pengaturan Sistem**
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Gaji Pokok Universal
+- Komponen `GP` (Gaji Pokok) bersifat universal dan menjadi **penanda basis BPJS**
+- Komponen jabatan-spesifik (dahulu "Gaji Pokok Jabatan") diubah menjadi **Tunjangan Jabatan** (kode: `GP_DRV`, `GP_ADM`, dst.)
+- Nilai GP diset per-karyawan melalui form input karyawan
 
-## License
+### 5. Kalkulasi PPh 21
+- Mendukung regulasi **TER 2024**
+- Dapat dinonaktifkan (pilihan `none`) — untuk antisipasi revisi pemerintah
+- Komponen yang dikecualikan dari Bruto Kena Pajak dapat dicentang di Pengaturan (default: `BPJS_TK`)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 6. Pengaturan Sistem
+Halaman `/settings` menyediakan konfigurasi:
+- Versi kalkulator PPh 21
+- Komponen pengurang Bruto pajak
+- **Seluruh tarif BPJS** (karyawan + perusahaan termasuk JKK configurable)
+
+---
+
+## 🧱 Struktur Komponen Gaji (Seeder Default)
+
+### Earnings (Pendapatan)
+| Kode | Nama | Nominal Default |
+|------|------|----------------|
+| `GP` | Gaji Pokok (Universal) | 0 (diset per karyawan) |
+| `GP_SPV` | Tunjangan Jabatan SPV | Rp 6.000.000 |
+| `GP_ADM` | Tunjangan Jabatan Admin | Rp 4.500.000 |
+| `GP_DRV` | Tunjangan Jabatan Driver | Rp 3.000.000 |
+| `GP_HLP` | Tunjangan Jabatan Helper | Rp 2.000.000 |
+| `GP_MCH` | Tunjangan Jabatan Mekanik | Rp 4.000.000 |
+| `UM` | Uang Makan Tetap | Rp 500.000 |
+| `TJ_FUNC` | Tunjangan Fungsional | 0 |
+| `UJ` | Uang Jalan / Insentif Trip | 0 (variabel) |
+| `LMBR` | Uang Lembur | 0 (variabel) |
+| `TJ_BPJS_TK_CO` | Tunjangan BPJS TK Perusahaan | Auto |
+| `TJ_BPJS_KES_CO` | Tunjangan BPJS Kes Perusahaan | Auto |
+
+### Deductions (Potongan)
+| Kode | Nama |
+|------|------|
+| `BPJS_TK` | Potongan BPJS Ketenagakerjaan Karyawan |
+| `BPJS_KES` | Potongan BPJS Kesehatan Karyawan |
+| `POT_BPJS_TK_CO` | Potongan BPJS TK Perusahaan (offset) |
+| `POT_BPJS_KES_CO` | Potongan BPJS Kes Perusahaan (offset) |
+| `KSB` | Potongan Kasbon |
+| `KLAIM` | Potongan Klaim Barang/Kerusakan |
+
+---
+
+## ⚙️ Artisan Commands Kustom
+
+### 1. Sinkronisasi BPJS Massal
+
+Hitung ulang dan simpan komponen BPJS untuk **seluruh karyawan aktif** berdasarkan Gaji Pokok dan UMR cabangnya masing-masing. Gunakan ini ketika:
+- Baru onboarding data karyawan lama (sebelum fitur BPJS otomatis)
+- Ada perubahan tarif BPJS di Pengaturan Sistem
+- Ada perubahan nilai UMR cabang
+
+```bash
+php artisan payroll:sync-bpjs
+```
+
+Opsi tambahan:
+```bash
+# Paksa overwrite meski data BPJS sudah ada
+php artisan payroll:sync-bpjs --force
+
+# Hanya karyawan dari cabang tertentu
+php artisan payroll:sync-bpjs --branch=1
+```
+
+---
+
+## 🔄 Alur Kalkulasi BPJS
+
+```
+Input Karyawan (form)
+    │
+    ├─ Nilai GP (Gaji Pokok) diinput manual
+    │
+    └─► BpjsCalculatorService::calculateForAdmin()
+            │
+            ├─ Ambil nilai GP dari: submitted form → employee_components → template fallback
+            │
+            ├─ Ambil UMR dari: employee.branch.umr_amount
+            │
+            ├─ baseSalary = max(GP, UMR)
+            │
+            ├─ Hitung 6 komponen BPJS menggunakan tarif dari settings DB
+            │
+            └─ Simpan ke employee_components
+```
+
+---
+
+## 🔄 Alur Generate Payroll
+
+```
+Admin pilih Periode → Generate Payroll
+    │
+    ├─ Ambil semua karyawan aktif
+    │
+    ├─ Untuk setiap karyawan:
+    │     ├─ Resolve template gaji (by jabatan/tipe)
+    │     ├─ Ambil komponen override (employee_components)
+    │     ├─ Hitung Total Earning & Total Deduction
+    │     ├─ Hitung Bruto Kena Pajak (dikurangi komponen exclude setting)
+    │     ├─ Hitung PPh 21 (via Pph21Calculator sesuai versi setting)
+    │     └─ Simpan PayrollSlip
+    │
+    └─ Periode status: draft → published
+```
+
+---
+
+## 🗄️ Tabel Penting
+
+| Tabel | Keterangan |
+|-------|-----------|
+| `employees` | Master karyawan |
+| `branch` | Master cabang, termasuk `umr_amount` |
+| `payroll_components` | Master komponen gaji |
+| `payroll_templates` | Template gaji per jabatan |
+| `payroll_template_components` | Detail komponen per template |
+| `employee_components` | Komponen override spesifik karyawan (termasuk BPJS auto) |
+| `payroll_periods` | Periode penggajian |
+| `payroll_slips` | Slip gaji per karyawan per periode |
+| `settings` | Konfigurasi sistem (BPJS rates, PPh21 version, dll) |
+| `ptkp_statuses` | Master status PTKP |
+
+---
+
+## 📐 Tarif BPJS Default (sesuai regulasi pemerintah)
+
+| Komponen | Karyawan | Perusahaan |
+|----------|----------|------------|
+| JHT | 2% | 3.7% |
+| JP | 1% | 2% |
+| JKK | — | 0.24% *(configurable, sesuai risiko kerja)* |
+| JKm | — | 0.3% |
+| BPJS Kes | 1% | 4% |
+| Plafon Kes | 12jt | 12jt |
+
+> **JKK (Jaminan Kecelakaan Kerja)** dapat disesuaikan di Pengaturan Sistem:
+> - Risiko sangat rendah: 0.24%
+> - Risiko rendah: 0.54%
+> - Risiko sedang: 0.89%
+> - Risiko tinggi: 1.27%
+> - Risiko sangat tinggi: 1.74%
+
+---
+
+## 🔑 Roles & Permission
+
+| Role | Akses |
+|------|-------|
+| `super-admin` | Akses penuh semua fitur |
+| `admin` | CRUD karyawan, generate payroll |
+| `finance` | View slip gaji, laporan |
+| `operator` | Input data harian (kasbon, insentif) |
+
+---
+
+## 📝 Catatan Pengembang
+
+- Setelah mengubah tarif BPJS di Pengaturan, jalankan `php artisan payroll:sync-bpjs` untuk update data karyawan
+- `PayrollComponentSeeder` menggunakan `updateOrCreate` — aman dijalankan berulang
+- Setting `pph21_calculator_version = none` akan menonaktifkan pemotongan pajak sepenuhnya (berguna saat ada revisi regulasi pemerintah)
+- UMR per cabang diisi manual di menu **Master > Cabang**
+- Komponen `GP` (Gaji Pokok) diisi saat input/edit karyawan — ini yang menjadi basis BPJS, berbeda dengan `GP_DRV` dll (Tunjangan Jabatan)

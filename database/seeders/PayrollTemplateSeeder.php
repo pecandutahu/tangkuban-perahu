@@ -19,12 +19,18 @@ class PayrollTemplateSeeder extends Seeder
         };
 
         $templates = [
-            'Driver' => ['GP_DRV', 'UM', 'UJ', 'KSB', 'BPJ', 'KLAIM'],
-            'Helper' => ['GP_HLP', 'UM', 'UJ', 'KSB', 'BPJ', 'KLAIM'],
-            'Staff Admin' => ['GP_ADM', 'UM', 'LMBR', 'BPJ'],
-            'Mekanik' => ['GP_MCH', 'UM', 'LMBR', 'KSB', 'BPJ'],
-            'Supervisor' => ['GP_SPV', 'UM', 'BPJ'],
+            // 'GP'      = Gaji Pokok universal (basis BPJS)
+            // 'GP_*'    = Tunjangan Jabatan spesifik
+            // 'BPJS_*'  = Iuran BPJS karyawan
+            // 'TJ_BPJS_*_CO'  = Tunjangan BPJS perusahaan (earning)
+            // 'POT_BPJS_*_CO' = Offset BPJS perusahaan (deduction, dibayar ke BPJS)
+            'Driver'     => ['GP', 'GP_DRV', 'UM', 'UJ', 'KSB', 'BPJS_TK', 'BPJS_KES', 'TJ_BPJS_TK_CO', 'TJ_BPJS_KES_CO', 'POT_BPJS_TK_CO', 'POT_BPJS_KES_CO', 'KLAIM'],
+            'Helper'     => ['GP', 'GP_HLP', 'UM', 'UJ', 'KSB', 'BPJS_TK', 'BPJS_KES', 'TJ_BPJS_TK_CO', 'TJ_BPJS_KES_CO', 'POT_BPJS_TK_CO', 'POT_BPJS_KES_CO', 'KLAIM'],
+            'Staff Admin' => ['GP', 'GP_ADM', 'UM', 'LMBR', 'BPJS_TK', 'BPJS_KES', 'TJ_BPJS_TK_CO', 'TJ_BPJS_KES_CO', 'POT_BPJS_TK_CO', 'POT_BPJS_KES_CO'],
+            'Mekanik'    => ['GP', 'GP_MCH', 'UM', 'LMBR', 'KSB', 'BPJS_TK', 'BPJS_KES', 'TJ_BPJS_TK_CO', 'TJ_BPJS_KES_CO', 'POT_BPJS_TK_CO', 'POT_BPJS_KES_CO'],
+            'Supervisor' => ['GP', 'GP_SPV', 'UM', 'BPJS_TK', 'BPJS_KES', 'TJ_BPJS_TK_CO', 'TJ_BPJS_KES_CO', 'POT_BPJS_TK_CO', 'POT_BPJS_KES_CO'],
         ];
+
 
         foreach ($templates as $templateName => $componentCodes) {
             $type = ($templateName === 'Helper') ? 'contract' : 'permanent';

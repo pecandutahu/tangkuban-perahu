@@ -34,6 +34,7 @@ const form = useForm({
     id: null,
     code: '',
     name: '',
+    umr_amount: 0,
 });
 
 const openModal = (branch = null) => {
@@ -42,8 +43,10 @@ const openModal = (branch = null) => {
         form.id = branch.id;
         form.code = branch.code;
         form.name = branch.name;
+        form.umr_amount = branch.umr_amount ?? 0;
     } else {
         form.reset();
+        form.umr_amount = 0;
     }
     isModalOpen.value = true;
 };
@@ -102,6 +105,7 @@ const deleteData = (id) => {
                                 <tr>
                                     <th scope="col" class="px-6 py-3 border-b">Kode</th>
                                     <th scope="col" class="px-6 py-3 border-b">Nama Cabang</th>
+                                    <th scope="col" class="px-6 py-3 border-b">UMR (Rp)</th>
                                     <th scope="col" class="px-6 py-3 border-b text-center" v-if="$page.props.auth.user.permissions.includes('edit-master-data') || $page.props.auth.user.permissions.includes('delete-master-data')">Aksi</th>
                                 </tr>
                             </thead>
@@ -109,6 +113,7 @@ const deleteData = (id) => {
                                 <tr v-for="item in branches.data" :key="item.id" class="border-b bg-white hover:bg-gray-50">
                                     <td class="px-6 py-4 font-semibold text-gray-900 border-r">{{ item.code }}</td>
                                     <td class="px-6 py-4 border-r">{{ item.name }}</td>
+                                    <td class="px-6 py-4 border-r font-mono">{{ new Intl.NumberFormat('id-ID').format(item.umr_amount || 0) }}</td>
                                     <td class="px-6 py-4 text-center space-x-2" v-if="$page.props.auth.user.permissions.includes('edit-master-data') || $page.props.auth.user.permissions.includes('delete-master-data')">
                                         <button v-if="$page.props.auth.user.permissions.includes('edit-master-data')" @click="openModal(item)" class="text-indigo-600 hover:text-indigo-900 font-medium hover:underline">Edit</button>
                                         <button v-if="$page.props.auth.user.permissions.includes('delete-master-data')" @click="deleteData(item.id)" class="text-red-600 hover:text-red-900 font-medium hover:underline">Hapus</button>
@@ -142,6 +147,13 @@ const deleteData = (id) => {
                         <InputLabel for="name" value="Nama Cabang" />
                         <TextInput id="name" type="text" v-model="form.name" class="mt-1 block w-full" />
                         <InputError :message="form.errors.name" class="mt-2" />
+                    </div>
+
+                    <div class="mb-4">
+                        <InputLabel for="umr_amount" value="Standar UMR Cabang (Rp)" />
+                        <TextInput id="umr_amount" type="number" v-model="form.umr_amount" class="mt-1 block w-full" placeholder="Contoh: 5000000" />
+                        <InputError :message="form.errors.umr_amount" class="mt-2" />
+                        <p class="text-xs text-gray-500 mt-1">Acuan nilai minimum wajib bagi perhitungan basis BPJS. Apabila gaji pokok per karyawan kurang dari UMR ini, BPJS akan mempergunakan UMR cabang.</p>
                     </div>
 
                     <div class="mt-6 flex justify-end">

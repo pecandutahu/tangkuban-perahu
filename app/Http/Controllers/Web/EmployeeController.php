@@ -69,8 +69,10 @@ class EmployeeController extends Controller
         try {
             $employee = Employee::create($validated);
 
-            if (!empty($validated['specific_components'])) {
-                foreach ($validated['specific_components'] as $comp) {
+            $finalComponents = \App\Modules\Payroll\Services\BpjsCalculatorService::calculateForAdmin($employee, $validated['specific_components'] ?? []);
+
+            if (!empty($finalComponents)) {
+                foreach ($finalComponents as $comp) {
                     $employee->specificComponents()->create([
                         'payroll_component_id' => $comp['payroll_component_id'],
                         'amount' => $comp['amount'],
@@ -84,8 +86,8 @@ class EmployeeController extends Controller
                     'entity_id' => $employee->id,
                     'action' => 'update_employee_components',
                     'before_data' => [],
-                    'after_data' => $validated['specific_components'],
-                    'notes' => 'Menambahkan tunjangan khusus pada saat pembuatan profil.'
+                    'after_data' => $finalComponents,
+                    'notes' => 'Membuat rincian komponen karyawan khusus (Hybrid Auto-Generated BPJS).'
                 ]);
             }
 
@@ -139,32 +141,33 @@ class EmployeeController extends Controller
         try {
             $employee->update($validated);
 
-            if ($request->has('specific_components')) {
-                $beforeComponents = $employee->specificComponents()->get()->toArray();
-                $employee->specificComponents()->delete();
+            // Selalu perbarui komponen (karena jabatan/tipe pegawai mungkin berubah, memengaruhi upah dasar BPJS proporsional)
+            $beforeComponents = $employee->specificComponents()->get()->toArray();
+            $employee->specificComponents()->delete();
 
-                $afterComponents = [];
-                if (!empty($validated['specific_components']) && is_array($validated['specific_components'])) {
-                    foreach ($validated['specific_components'] as $comp) {
-                        $created = $employee->specificComponents()->create([
-                            'payroll_component_id' => $comp['payroll_component_id'],
-                            'amount' => $comp['amount'],
-                            'is_active' => true,
-                        ]);
-                        $afterComponents[] = $created->toArray();
-                    }
+            $finalComponents = \App\Modules\Payroll\Services\BpjsCalculatorService::calculateForAdmin($employee, $validated['specific_components'] ?? []);
+            
+            $afterComponents = [];
+            if (!empty($finalComponents)) {
+                foreach ($finalComponents as $comp) {
+                    $created = $employee->specificComponents()->create([
+                        'payroll_component_id' => $comp['payroll_component_id'],
+                        'amount' => $comp['amount'],
+                        'is_active' => true,
+                    ]);
+                    $afterComponents[] = $created->toArray();
                 }
-
-                \App\Models\AuditLog::create([
-                    'user_id' => $request->user() ? $request->user()->id : 1,
-                    'entity_type' => Employee::class,
-                    'entity_id' => $employee->id,
-                    'action' => 'update_employee_components',
-                    'before_data' => $beforeComponents,
-                    'after_data' => $afterComponents,
-                    'notes' => 'Memperbarui rincian tunjangan/potongan khusus spesifik milik karyawan.'
-                ]);
             }
+
+            \App\Models\AuditLog::create([
+                'user_id' => $request->user() ? $request->user()->id : 1,
+                'entity_type' => Employee::class,
+                'entity_id' => $employee->id,
+                'action' => 'update_employee_components',
+                'before_data' => $beforeComponents,
+                'after_data' => $afterComponents,
+                'notes' => 'Memperbarui rincian tunjangan/potongan khusus spesifik milik karyawan (Hybrid Auto-Generated BPJS).'
+            ]);
 
             DB::commit();
             return redirect()->route('employees.index')->with('success', 'Employee updated successfully.');

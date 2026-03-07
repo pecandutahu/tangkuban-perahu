@@ -19,9 +19,12 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             CompanySeeder::class,
+            PtkpStatusSeeder::class,
             PayrollComponentSeeder::class,
             PayrollTemplateSeeder::class,
             EmployeeSeeder::class,
+            Pph21SettingSeeder::class,
+            BpjsSettingSeeder::class,
         ]);
     }
 }

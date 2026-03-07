@@ -7,5 +7,5 @@ use Illuminate\Database\Eloquent\Model;
 class Branch extends Model
 {
     protected $table = 'branch';
-    protected $fillable = ['code', 'name'];
+    protected $fillable = ['code', 'name', 'umr_amount'];
 }

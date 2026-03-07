@@ -243,17 +243,33 @@ class GeneratePayrollService
             $totalDeduction = 0;
             $allComponents = PayrollItemComponent::where('payroll_item_id', $item->id)->get();
             
+            // Konfigurasi Pengecualian Komponen BPJS
+            $excludedComponentIds = [];
+            $exSetting = \App\Models\Setting::where('key', 'pph21_excluded_components')->first();
+            if ($exSetting && !empty($exSetting->value)) {
+                $excludedComponentIds = json_decode($exSetting->value, true) ?? [];
+            }
+            
+            // Variabel khusus pajak
+            $taxableBruto = 0;
+
             foreach ($allComponents as $comp) {
                 if ($comp->component_type === 'earning') {
                     $totalBruto += $comp->amount;
+                    $taxableBruto += $comp->amount; // Tambah ke base awal pajak
                 } elseif ($comp->component_type === 'deduction') {
                     $totalDeduction += $comp->amount;
+                    
+                    // Bila komponen ini dipatok sebagai pengurang bruto wajib
+                    if (in_array($comp->payroll_component_id, $excludedComponentIds)) {
+                        $taxableBruto -= $comp->amount;
+                    }
                 }
             }
 
-            // Hitung Pajak PPh21
+            // Hitung Pajak PPh21 menggunakan Nilai Bruto yang telah dipotong Iuran (Jika ada)
             $taxStrategy = \App\Modules\Payroll\Calculators\Pph21CalculatorFactory::make();
-            $pph21Amount = $taxStrategy ? $taxStrategy->calculate($employee, $totalBruto) : 0;
+            $pph21Amount = $taxStrategy ? $taxStrategy->calculate($employee, $taxableBruto) : 0;
 
             if ($pph21Amount > 0) {
                 // Pastikan ada Master Komponen khusus untuk PPh 21
