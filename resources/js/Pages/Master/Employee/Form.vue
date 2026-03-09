@@ -27,15 +27,14 @@ const form = useForm({
     position_id: props.employee.position_id || '',
     branch_id: props.employee.branch_id || '',
     employment_type: props.employee.employment_type || 'permanent',
-    join_date: props.employee.join_date ? props.employee.join_date.split(' ')[0] : '', // Extract YYYY-MM-DD
-    resign_date: props.employee.resign_date ? props.employee.resign_date.split(' ')[0] : '',
+    join_date: props.employee.join_date ? props.employee.join_date.slice(0, 10): '', // Extract YYYY-MM-DD
+    resign_date: props.employee.resign_date ? props.employee.resign_date.slice(0, 10) : '',
     is_active: props.employee.is_active ?? true,
     payment_method: props.employee.payment_method || 'bank_transfer',
     bank_name: props.employee.bank_name || '',
     bank_account: props.employee.bank_account || '',
     specific_components: props.employee.specific_components || props.employee.specificComponents || [],
 });
-
 const addSpecificComponent = () => {
     form.specific_components.push({
         payroll_component_id: '',
