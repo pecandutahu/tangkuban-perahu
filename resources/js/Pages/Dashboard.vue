@@ -30,6 +30,25 @@ const statusBadge = (s) => ({
 const maxBranch = Math.max(...(props.employeesByBranch.map(b => b.count) || [1]), 1);
 const maxDept   = Math.max(...(props.employeesByDept.map(d => d.count)   || [1]), 1);
 const maxNetto  = Math.max(...(props.payrollTrend.map(t => Number(t.netto)) || [1]), 1);
+
+// Warna bar tren netto: hijau = naik, merah = turun, abu = pertama/sama
+const barColor = (index) => {
+    if (index === 0) return 'bg-gray-400';
+    const curr = Number(props.payrollTrend[index].netto);
+    const prev = Number(props.payrollTrend[index - 1].netto);
+    if (curr > prev) return 'bg-green-500';
+    if (curr < prev) return 'bg-red-500';
+    return 'bg-gray-400';
+};
+
+const deltaLabel = (index) => {
+    if (index === 0) return null;
+    const curr = Number(props.payrollTrend[index].netto);
+    const prev = Number(props.payrollTrend[index - 1].netto);
+    const diff = curr - prev;
+    if (diff === 0) return null;
+    return { sign: diff > 0 ? '↑' : '↓', color: diff > 0 ? 'text-green-600' : 'text-red-500', value: fmt(Math.abs(diff)) };
+};
 </script>
 
 <template>
@@ -195,9 +214,14 @@ const maxNetto  = Math.max(...(props.payrollTrend.map(t => Number(t.netto)) || [
                                     <td class="py-2.5 pr-6 text-center">{{ t.employees }}</td>
                                     <td class="py-2.5 pr-4 font-semibold text-blue-700">{{ fmt(t.netto) }}</td>
                                     <td class="py-2.5">
-                                        <div class="w-full bg-gray-100 rounded-full h-3">
-                                            <div class="bg-blue-500 h-3 rounded-full"
-                                                 :style="{ width: Math.round((Number(t.netto) / maxNetto) * 100) + '%' }"></div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex-1 bg-gray-100 rounded-full h-3">
+                                                <div :class="[barColor(payrollTrend.indexOf(t)), 'h-3 rounded-full transition-all duration-500']"
+                                                     :style="{ width: Math.round((Number(t.netto) / maxNetto) * 100) + '%' }"></div>
+                                            </div>
+                                            <span v-if="deltaLabel(payrollTrend.indexOf(t))" :class="['text-xs font-medium shrink-0', deltaLabel(payrollTrend.indexOf(t)).color]">
+                                                {{ deltaLabel(payrollTrend.indexOf(t)).sign }}
+                                            </span>
                                         </div>
                                     </td>
                                 </tr>
