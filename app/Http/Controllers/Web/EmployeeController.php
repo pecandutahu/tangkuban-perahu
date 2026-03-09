@@ -12,7 +12,7 @@ class EmployeeController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Employee::with(['department', 'position', 'branch'])->orderBy('nik_internal');
+        $query = Employee::with(['department', 'position', 'branch'])->orderBy('name');
 
         if ($request->filled('search')) {
             $search = $request->search;
