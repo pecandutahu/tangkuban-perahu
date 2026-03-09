@@ -30,7 +30,7 @@ const form = useForm({
     join_date: props.employee.join_date ? props.employee.join_date.slice(0, 10): '', // Extract YYYY-MM-DD
     resign_date: props.employee.resign_date ? props.employee.resign_date.slice(0, 10) : '',
     is_active: props.employee.is_active ?? true,
-    payment_method: props.employee.payment_method || 'bank_transfer',
+    payment_method: props.employee.payment_method || 'transfer',
     bank_name: props.employee.bank_name || '',
     bank_account: props.employee.bank_account || '',
     specific_components: props.employee.specific_components || props.employee.specificComponents || [],
@@ -189,13 +189,13 @@ const submit = () => {
                                 <div class="mb-4">
                                     <InputLabel for="payment_method" value="Metode Pembayaran Gaji" />
                                     <select id="payment_method" v-model="form.payment_method" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                        <option value="bank_transfer">Transfer Bank (Bank Transfer)</option>
+                                        <option value="transfer">Transfer Bank (Bank Transfer)</option>
                                         <option value="cash">Uang Tunai (Cash)</option>
                                     </select>
                                     <InputError :message="form.errors.payment_method" class="mt-2" />
                                 </div>
 
-                                <div v-if="form.payment_method === 'bank_transfer'" class="grid grid-cols-2 gap-4 p-4 border rounded-md bg-blue-50 border-blue-100">
+                                <div v-if="form.payment_method === 'transfer'" class="grid grid-cols-2 gap-4 p-4 border rounded-md bg-blue-50 border-blue-100">
                                     <div class="mb-2">
                                         <InputLabel for="bank_name" value="Nama Bank" />
                                         <TextInput id="bank_name" type="text" v-model="form.bank_name" class="mt-1 block w-full" placeholder="Contoh: BCA, Mandiri" />
