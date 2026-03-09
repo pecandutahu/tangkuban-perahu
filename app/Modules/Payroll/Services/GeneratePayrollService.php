@@ -50,7 +50,11 @@ class GeneratePayrollService
                 ]);
 
                 // 4. Ambil semua Karyawan aktif dengan komponen khususnya
-                $employees = Employee::with('specificComponents.component')->where('is_active', true)->get();
+                $employees = Employee::with([
+                    'specificComponents.component',
+                    'department:id,name',
+                    'branch:id,name',
+                ])->where('is_active', true)->get();
 
                 foreach ($employees as $employee) {
                     // Gunakan Resolver untuk cari template
@@ -63,14 +67,14 @@ class GeneratePayrollService
                     // 5. Buat PayrollItem per karyawan
                     $item = PayrollItem::create([
                         'payroll_period_id' => $period->id,
-                        'employee_id' => $employee->id,
-                        'employee_name' => $employee->name,
-                        'department_name' => null,
-                        'branch_name' => null,
-                        'status' => 'draft',
-                        'total_bruto' => 0,
-                        'total_deduction' => 0,
-                        'total_netto' => 0,
+                        'employee_id'       => $employee->id,
+                        'employee_name'     => $employee->name,
+                        'department_name'   => $employee->department?->name,
+                        'branch_name'       => $employee->branch?->name,
+                        'status'            => 'draft',
+                        'total_bruto'       => 0,
+                        'total_deduction'   => 0,
+                        'total_netto'       => 0,
                     ]);
 
                     $totalBruto = 0;

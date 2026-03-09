@@ -84,6 +84,9 @@ const deleteData = (id) => {
                                         <Link :href="route('employees.edit', emp.id)" class="text-indigo-600 hover:text-indigo-900 font-medium hover:underline">
                                             Edit
                                         </Link>
+                                        <Link :href="route('employees.payroll-history', emp.id)" class="text-emerald-600 hover:text-emerald-800 font-medium hover:underline ml-2">
+                                            Riwayat Payroll
+                                        </Link>
                                         <button @click="deleteData(emp.id)" class="text-red-600 hover:text-red-900 font-medium hover:underline ml-2">
                                             Hapus
                                         </button>

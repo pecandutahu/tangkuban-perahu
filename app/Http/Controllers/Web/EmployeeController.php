@@ -182,4 +182,23 @@ class EmployeeController extends Controller
         Employee::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Employee deleted.');
     }
+
+    /**
+     * Riwayat payroll per karyawan — semua periode yang pernah diikuti.
+     */
+    public function payrollHistory(Request $request, $id)
+    {
+        $employee = Employee::with(['department:id,name', 'position:id,name', 'branch:id,name'])->findOrFail($id);
+
+        $historyQuery = \App\Models\PayrollItem::with('period:id,code,start_date,end_date,pay_date,status')
+            ->where('employee_id', $id)
+            ->orderByDesc('created_at');
+
+        $history = $historyQuery->paginate(12)->withQueryString();
+
+        return Inertia::render('Master/Employee/PayrollHistory', [
+            'employee' => $employee,
+            'history'  => $history,
+        ]);
+    }
 }

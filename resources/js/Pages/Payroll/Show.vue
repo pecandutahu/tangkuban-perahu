@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -203,6 +203,12 @@ const performSearch = () => {
                 </h2>
                 
                 <div class="space-x-2">
+                    <!-- Tombol Rekap Payroll -->
+                    <Link :href="route('payroll.recap', period.id)"
+                          class="inline-flex items-center px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-300 text-sm font-medium rounded-md hover:bg-emerald-100 transition">
+                        📊 Rekap Periode
+                    </Link>
+
                     <!-- Action Buttons Based on Status -->
                     <!-- CSV Import only allowed in draft -->
                     <SecondaryButton v-if="period.status === 'draft' && $page.props.auth.user.permissions.includes('edit-payroll')" @click="openImportModal">
@@ -491,14 +497,18 @@ const performSearch = () => {
                 <h2 class="text-xl font-bold text-gray-900 mb-4 border-b pb-3">Rincian Komponen Gaji: <span class="text-indigo-700">{{ selectedItem?.employee?.name || '-' }}</span> ({{ selectedItem?.employee?.nik_internal || '-' }})</h2>
                 
                 <div v-if="selectedItem">
-                    <div class="grid grid-cols-2 gap-4 mb-5 p-4 rounded-lg bg-gray-50 border border-gray-100 shadow-inner">
+                    <div class="grid grid-cols-3 gap-4 mb-5 p-4 rounded-lg bg-gray-50 border border-gray-100 shadow-inner">
                         <div>
-                            <span class="text-gray-500 block text-xs uppercase font-bold tracking-wider mb-1">Total Pendapatan (Bruto)</span>
+                            <span class="text-gray-500 block text-sm uppercase font-bold tracking-wider mb-1">Total Pendapatan (Bruto)</span>
                             <span class="font-bold text-xl text-gray-900">{{ formatCurrency(selectedItem.total_bruto) }}</span>
                         </div>
                         <div>
-                            <span class="text-gray-500 block text-xs uppercase font-bold tracking-wider mb-1">Total Potongan (Deduction)</span>
+                            <span class="text-gray-500 block text-sm uppercase font-bold tracking-wider mb-1">Total Potongan (Deduction)</span>
                             <span class="font-bold text-xl text-red-600">{{ formatCurrency(selectedItem.total_deduction) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block text-sm uppercase font-bold tracking-wider mb-1">Total Pendapatan (Netto)</span>
+                            <span class="font-bold text-xl text-green-600">{{ formatCurrency(selectedItem.total_netto) }}</span>
                         </div>
                     </div>
 

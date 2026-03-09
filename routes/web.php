@@ -14,9 +14,8 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\Web\DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -25,8 +24,12 @@ Route::middleware('auth')->group(function () {
 
     // Web UI Routes for Payroll
     Route::middleware(['permission:view-payroll'])->group(function () {
+        Route::get('/rekap', [\App\Http\Controllers\Web\PayrollController::class, 'rekapIndex'])->name('payroll.rekap');
         Route::get('/payroll-periods', [\App\Http\Controllers\Web\PayrollController::class, 'index'])->name('payroll.index');
         Route::get('/payroll-periods/{id}', [\App\Http\Controllers\Web\PayrollController::class, 'show'])->name('payroll.show');
+        Route::get('/payroll-periods/{id}/recap', [\App\Http\Controllers\Web\PayrollController::class, 'recap'])->name('payroll.recap');
+        Route::get('/payroll-periods/{id}/export-csv', [\App\Http\Controllers\Web\PayrollController::class, 'exportCsv'])->name('payroll.export.csv');
+        Route::get('/payroll-periods/{id}/export-bank', [\App\Http\Controllers\Web\PayrollController::class, 'exportBankTransfer'])->name('payroll.export.bank');
         
         // Payroll Operations (Protected by Session Auth & Specific Spatie Permissions)
         Route::post('/payroll-periods/generate', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'generate'])
@@ -72,6 +75,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('payroll-components', \App\Http\Controllers\Web\PayrollComponentController::class)->except(['create', 'edit', 'show']);
         Route::resource('templates', \App\Http\Controllers\Web\PayrollTemplateController::class)->except(['show']);
         Route::resource('employees', \App\Http\Controllers\Web\EmployeeController::class)->except(['show']);
+        Route::get('/employees/{id}/payroll-history', [\App\Http\Controllers\Web\EmployeeController::class, 'payrollHistory'])
+            ->name('employees.payroll-history');
         Route::resource('ptkp-statuses', \App\Http\Controllers\Web\PtkpStatusController::class)->except(['create', 'edit', 'show']);
     });
 

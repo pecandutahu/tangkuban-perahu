@@ -44,7 +44,15 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('payroll.index') || route().current('payroll.show')"
                                     v-if="$page.props.auth.user.permissions.includes('view-payroll') || $page.props.auth.user.roles.includes('HR Admin')"
                                 >
-                                    Manajemen Gaji (Payroll)
+                                    Manajemen Gaji
+                                </NavLink>
+
+                                <NavLink
+                                    :href="route('payroll.rekap')"
+                                    :active="route().current('payroll.rekap')"
+                                    v-if="$page.props.auth.user.permissions.includes('view-payroll') || $page.props.auth.user.roles.includes('HR Admin')"
+                                >
+                                    📊 Rekap
                                 </NavLink>
 
                                 <!-- Master Data Dropdown -->
