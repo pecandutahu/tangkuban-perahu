@@ -551,6 +551,12 @@ const performSearch = () => {
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
+                    <a v-if="selectedItem"
+                       :href="route('payroll.slip', selectedItem.id)" 
+                       target="_blank"
+                       class="inline-flex items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-500 active:bg-emerald-900 focus:outline-none focus:border-emerald-900 focus:ring focus:ring-emerald-300 disabled:opacity-25 transition">
+                        ⬇ Slip Gaji (PDF)
+                    </a>
                     <SecondaryButton 
                         v-if="period.status === 'draft'"
                         @click="regenerateCurrentItem" 

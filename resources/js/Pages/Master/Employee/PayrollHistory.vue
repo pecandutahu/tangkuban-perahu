@@ -73,11 +73,18 @@ const statusBadge = (s) => ({
                                         </span>
                                     </td>
                                     <td class="px-6 py-3 text-center">
-                                        <Link v-if="item.period"
-                                              :href="route('payroll.show', item.period.id)"
-                                              class="text-indigo-600 hover:underline text-xs">
-                                            Lihat
-                                        </Link>
+                                        <div class="flex flex-col gap-1 items-center">
+                                            <Link v-if="item.period"
+                                                  :href="route('payroll.show', item.period.id)"
+                                                  class="text-indigo-600 hover:underline text-xs">
+                                                Data Periode
+                                            </Link>
+                                            <a :href="route('payroll.slip', item.id)"
+                                               target="_blank"
+                                               class="text-emerald-600 hover:underline text-xs font-bold">
+                                                ⬇ Slip PDF
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="!history.data.length" class="border-t">
