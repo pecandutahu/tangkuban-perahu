@@ -46,8 +46,15 @@ npm run dev
 - **Template Gaji (Payroll Template)** — Set komponen per jabatan/tipe kerja
 
 ### 2. Generate Payroll
-- Kalkulator gaji bulanan per periode
-- Komponen Earning + Deduction otomatis dari template
+Sistem membaca Master Data (Komponen Gaji, Tunjangan, BPJS) dari setiap karyawan aktif dan menyalinnya menjadi data statis pada periode bulan berjalan.
+   
+#### Kapan Sinkronisasi / Perhitungan BPJS Terjadi?
+Komponen potongan BPJS (seperti JHT, JP, Kes) **TIDAK** dihitung ulang saat tombol "Generate Payroll" diklik. Generate Payroll hanya bertugas menyalin data dari Master Data Karyawan. Perhitungan BPJS secara otomatis (`BpjsCalculatorService`) hanya ter-trigger pada kondisi berikut:
+1. **Saat Input Karyawan Baru via UI (Form Web):** Ketika HR menyimpan data karyawan baru.
+2. **Saat Update Profil Karyawan via UI (Form Web):** Ketika HR mengubah data gaji/jabatan karyawan (sistem otomatis menyesuaikan nilai potongan BPJS).
+3. **Manually via Terminal / Cron Job:** Menggunakan perintah khusus `php artisan payroll:sync-bpjs` untuk menyinkronisasi seluruh karyawan sekaligus (misalnya setelah import masal via Seeder).
+
+> **Catatan:** Jika Anda membuat karyawan melalui Seeder/Database (tanpa lewat UI), pastikan Anda **menjalankan `php artisan payroll:sync-bpjs` terlebih dahulu** sebelum melakukan "Generate Payroll", agar semua potongan otomatis BPJS masuk ke Master Data karyawan.
 - Override komponen spesifik per karyawan (`employee_components`)
 - Ekspor slip gaji
 
