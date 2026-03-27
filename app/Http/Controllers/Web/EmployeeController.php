@@ -69,6 +69,15 @@ class EmployeeController extends Controller
         try {
             $employee = Employee::create($validated);
 
+            // Auto-create User account for the new Employee
+            $userAccount = \App\Models\User::create([
+                'name' => $employee->name,
+                'email' => strtolower($employee->nik_internal) . '@company.local',
+                'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                'employee_id' => $employee->id,
+            ]);
+            $userAccount->assignRole('Karyawan');
+
             $finalComponents = \App\Modules\Payroll\Services\BpjsCalculatorService::calculateForAdmin($employee, $validated['specific_components'] ?? []);
 
             if (!empty($finalComponents)) {
@@ -199,6 +208,37 @@ class EmployeeController extends Controller
         return Inertia::render('Master/Employee/PayrollHistory', [
             'employee' => $employee,
             'history'  => $history,
+        ]);
+    }
+
+    public function myPayslips(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->employee_id) {
+            return Inertia::render('Employee/MyPayslip', [
+                'error' => 'Akun Anda belum ditautkan ke data Karyawan. Silakan hubungi HRD.',
+                'employee' => null,
+                'history' => null
+            ]);
+        }
+
+        $employee = Employee::with(['department', 'position', 'branch'])->find($user->employee_id);
+
+        $query = \App\Models\PayrollItem::with(['period' => function ($q) {
+                $q->orderBy('start_date', 'desc');
+            }])
+            ->where('employee_id', $user->employee_id)
+            ->whereHas('period', function ($q) {
+                // only show non-draft
+                $q->where('status', '!=', 'draft');
+            });
+
+        $history = $query->paginate(12)->withQueryString();
+
+        return Inertia::render('Employee/MyPayslip', [
+            'employee' => $employee,
+            'history' => $history,
+            'error' => null
         ]);
     }
 }

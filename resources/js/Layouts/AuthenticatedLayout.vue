@@ -55,6 +55,13 @@ const showingNavigationDropdown = ref(false);
                                     📊 Rekap
                                 </NavLink>
 
+                                <NavLink
+                                    :href="route('my-payslips')"
+                                    :active="route().current('my-payslips')"
+                                >
+                                    Slip Gaji Saya
+                                </NavLink>
+
                                 <!-- Master Data Dropdown -->
                                 <div class="hidden sm:flex sm:items-center sm:ms-6" v-if="$page.props.auth.user.permissions.includes('view-master-data')">
                                     <Dropdown align="right" width="48">
@@ -242,8 +249,15 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink
                             :href="route('payroll.index')"
                             :active="route().current('payroll.index') || route().current('payroll.show')"
+                            v-if="$page.props.auth.user.permissions.includes('view-payroll') || $page.props.auth.user.roles.includes('HR Admin')"
                         >
-                            Payroll
+                            Manajemen Gaji
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('my-payslips')"
+                            :active="route().current('my-payslips')"
+                        >
+                            Slip Gaji Saya
                         </ResponsiveNavLink>
                     </div>
 

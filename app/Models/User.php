@@ -20,7 +20,14 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'employee_id',
     ];
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
 
     protected $hidden = [
         'password',

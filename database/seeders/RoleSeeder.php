@@ -56,5 +56,6 @@ class RoleSeeder extends Seeder
         ]);
 
         Role::firstOrCreate(['name' => 'Viewer']);
+        Role::firstOrCreate(['name' => 'Karyawan']);
     }
 }

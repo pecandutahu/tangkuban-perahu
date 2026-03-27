@@ -33,10 +33,12 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::orderBy('name')->get();
+        $employees = \App\Models\Employee::orderBy('name')->get(['id', 'nik_internal', 'name']);
         return Inertia::render('Master/User/Form', [
             'userModel' => new User(), // passing as userModel to avoid conflict with auth.user
             'roles' => $roles,
-            'userRole' => null
+            'userRole' => null,
+            'employees' => $employees
         ]);
     }
 
@@ -46,12 +48,14 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => 'required|exists:roles,name'
+            'role' => 'required|exists:roles,name',
+            'employee_id' => 'nullable|exists:employees,id'
         ]);
 
         $user = clone new User();
         $user->name = $request->name;
         $user->email = $request->email;
+        $user->employee_id = $request->employee_id;
         $user->password = Hash::make($request->password);
         $user->save();
 
@@ -65,11 +69,13 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $roles = Role::orderBy('name')->get();
         $userRole = $user->roles->first()?->name;
+        $employees = \App\Models\Employee::orderBy('name')->get(['id', 'nik_internal', 'name']);
 
         return Inertia::render('Master/User/Form', [
             'userModel' => $user,
             'roles' => $roles,
-            'userRole' => $userRole
+            'userRole' => $userRole,
+            'employees' => $employees
         ]);
     }
 
@@ -85,11 +91,13 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|exists:roles,name'
+            'role' => 'required|exists:roles,name',
+            'employee_id' => 'nullable|exists:employees,id'
         ]);
 
         $user->name = $request->name;
         $user->email = $request->email;
+        $user->employee_id = $request->employee_id;
 
         // Only update password if provided
         if ($request->filled('password')) {
@@ -110,7 +118,7 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        if ($user->id === 1 || $user->id === auth()->id()) {
+        if ($user->id === 1 || $user->id === \Illuminate\Support\Facades\Auth::id()) {
             return redirect()->back()->withErrors(['error' => 'Tidak dapat menghapus akun root atau akun Anda sendiri!']);
         }
 

@@ -19,6 +19,11 @@ class SlipGajiController extends Controller
             'components'
         ])->findOrFail($id);
 
+        $user = auth()->user();
+        if (!$user->can('view-payroll') && $user->employee_id !== $item->employee_id) {
+            abort(403, 'Anda tidak diizinkan membuka slip gaji milik karyawan lain.');
+        }
+
         $earnings = $item->components->where('component_type', 'earning');
         $deductions = $item->components->where('component_type', 'deduction');
 

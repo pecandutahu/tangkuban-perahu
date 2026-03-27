@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Employee;
 use App\Models\EmployeeComponent;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Faker\Factory as Faker;
@@ -23,11 +26,11 @@ class EmployeeSeeder extends Seeder
         $tjFuncComponentId = DB::table('payroll_components')->where('code', 'TJ_FUNC')->first()->id ?? null;
 
         $employeeTypes = [
-            ['pos' => 'Supir Truck (Driver)', 'pos_prefix' => 'DRV', 'dep' => 'OPS', 'type' => 'permanent', 'count' => 100],
-            ['pos' => 'Kernet (Helper)', 'pos_prefix' => 'HLP', 'dep' => 'OPS', 'type' => 'contract', 'count' => 100],
-            ['pos' => 'Suku Cadang / Mekanik', 'pos_prefix' => 'MCH', 'dep' => 'MTC', 'type' => 'permanent', 'count' => 50],
-            ['pos' => 'Staff / Admin', 'pos_prefix' => 'ADM', 'dep' => 'FIN', 'type' => 'permanent', 'count' => 30],
-            ['pos' => 'Supervisor', 'pos_prefix' => 'SPV', 'dep' => 'OPS', 'type' => 'permanent', 'count' => 20],
+            ['pos' => 'Supir Truck (Driver)', 'pos_prefix' => 'DRV', 'dep' => 'OPS', 'type' => 'permanent', 'count' => 170],
+            ['pos' => 'Kernet (Helper)', 'pos_prefix' => 'HLP', 'dep' => 'OPS', 'type' => 'contract', 'count' => 150],
+            ['pos' => 'Suku Cadang / Mekanik', 'pos_prefix' => 'MCH', 'dep' => 'MTC', 'type' => 'permanent', 'count' => 80],
+            ['pos' => 'Staff / Admin', 'pos_prefix' => 'ADM', 'dep' => 'FIN', 'type' => 'permanent', 'count' => 60],
+            ['pos' => 'Supervisor', 'pos_prefix' => 'SPV', 'dep' => 'OPS', 'type' => 'permanent', 'count' => 40],
         ];
 
         $getDepId = function($code) {
@@ -52,6 +55,14 @@ class EmployeeSeeder extends Seeder
                     'department_id' => $depId,
                     'position_id' => $posId,
                 ]);
+
+                $user = User::create([
+                    'name' => $employee->name,
+                    'email' => strtolower($employee->nik_internal) . '@company.local',
+                    'password' => Hash::make('password'),
+                    'employee_id' => $employee->id,
+                ]);
+                $user->assignRole('Karyawan');
 
                 if (!empty($earningComponents)) {
                     // Random komponen earning lain

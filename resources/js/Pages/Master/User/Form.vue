@@ -10,6 +10,7 @@ const props = defineProps({
     userModel: Object,
     roles: Array,
     userRole: String,
+    employees: Array,
 });
 
 const isEdit = !!props.userModel.id;
@@ -20,6 +21,7 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     role: props.userRole || '',
+    employee_id: props.userModel.employee_id || '',
 });
 
 const submit = () => {
@@ -74,6 +76,27 @@ const submit = () => {
                                     <InputLabel for="email" value="Alamat Email (Digunakan untuk Login)" />
                                     <TextInput id="email" type="email" class="mt-1 block w-full" v-model="form.email" required autocomplete="username" />
                                     <InputError class="mt-2" :message="form.errors.email" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Block 1.5: Pemetaan Karyawan -->
+                        <div>
+                            <h3 class="text-lg font-medium leading-6 text-gray-900 border-b pb-2 mb-4">Integrasi Data Karyawan (Opsional)</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <InputLabel for="employee_id" value="Kaitkan dengan Profil Karyawan" />
+                                    <select
+                                        id="employee_id"
+                                        v-model="form.employee_id"
+                                        class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                    >
+                                        <option value="">-- Tidak Ditautkan (Hanya untuk Admin/Root) --</option>
+                                        <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                                            {{ emp.nik_internal }} - {{ emp.name }}
+                                        </option>
+                                    </select>
+                                    <InputError class="mt-2" :message="form.errors.employee_id" />
                                 </div>
                             </div>
                         </div>

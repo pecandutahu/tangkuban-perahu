@@ -22,10 +22,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Employee Portal (Protected by Auth only)
+    Route::get('/my-payslips', [\App\Http\Controllers\Web\EmployeeController::class, 'myPayslips'])->name('my-payslips');
+    Route::get('/payroll-items/{id}/slip', [\App\Http\Controllers\Web\SlipGajiController::class, 'download'])->name('payroll.slip');
+
     // Web UI Routes for Payroll
     Route::middleware(['permission:view-payroll'])->group(function () {
         Route::get('/rekap', [\App\Http\Controllers\Web\PayrollController::class, 'rekapIndex'])->name('payroll.rekap');
-        Route::get('/payroll-items/{id}/slip', [\App\Http\Controllers\Web\SlipGajiController::class, 'download'])->name('payroll.slip');
         Route::get('/payroll-periods', [\App\Http\Controllers\Web\PayrollController::class, 'index'])->name('payroll.index');
         Route::get('/payroll-periods/{id}', [\App\Http\Controllers\Web\PayrollController::class, 'show'])->name('payroll.show');
         Route::get('/payroll-periods/{id}/recap', [\App\Http\Controllers\Web\PayrollController::class, 'recap'])->name('payroll.recap');
