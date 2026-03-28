@@ -297,4 +297,29 @@ class PayrollController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    /**
+     * Delete Draft Payroll Period
+     */
+    public function destroy($id)
+    {
+        $period = PayrollPeriod::findOrFail($id);
+
+        if ($period->status !== 'draft') {
+            return redirect()->back()->withErrors(['error' => 'Hanya periode berstatus Draft yang dapat dihapus.']);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($period) {
+            foreach ($period->items as $item) {
+                // Hapus komponen spesifik tiap item
+                $item->components()->delete();
+                $item->delete();
+            }
+            // Hapus log period ini jika ada cascade opsional
+            $period->auditLogs()->delete();
+            $period->delete();
+        });
+
+        return redirect()->route('payroll.index')->with('success', 'Periode Draft berhasil dihapus selamanya.');
+    }
 }

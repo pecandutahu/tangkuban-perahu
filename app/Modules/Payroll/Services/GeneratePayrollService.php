@@ -27,15 +27,13 @@ class GeneratePayrollService
 
         try {
             return DB::transaction(function () use ($data) {
-                // 2. Anti Duplicate: Cek apakah periode dengan tanggal yang beririsan/sama persis sudah pernah ada
-                $existingPeriod = PayrollPeriod::where('start_date', $data['start_date'])
-                    ->where('end_date', $data['end_date'])
-                    ->where('period_type', $data['period_type'])
+                // 2. Anti Duplicate & Overlap: Cek apakah periode dengan tanggal yang beririsan sudah pernah ada
+                $existingPeriod = PayrollPeriod::where('start_date', '<=', $data['end_date'])
+                    ->where('end_date', '>=', $data['start_date'])
                     ->first();
 
                 if ($existingPeriod) {
-                    // Re-Generate Safe: Tolak jika sudah ada, minta user hapus draft lama dulu
-                    throw new \Exception("Periode penggajian ({$data['period_type']}) untuk tanggal {$data['start_date']} s/d {$data['end_date']} sudah pernah dibuat (Status: {$existingPeriod->status}). Silakan hapus draft lama jika ingin menggenerate ulang.");
+                    throw new \Exception("Gagal: Periode yang Anda buat beririsan dengan Periode {$existingPeriod->code} ({$existingPeriod->start_date->format('d/m/Y')} s/d {$existingPeriod->end_date->format('d/m/Y')} - Status: {$existingPeriod->status}). Silakan hapus draft lama atau sesuaikan tanggal.");
                 }
 
                 // 3. Buat Periode Payroll (Draft)

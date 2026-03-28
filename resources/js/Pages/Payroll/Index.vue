@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputError from '@/Components/InputError.vue';
@@ -42,6 +42,17 @@ const generateDraft = () => {
         });
 };
 
+const deletePeriod = (period) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus selamanya Periode Draft "${period.code}" ini?`)) {
+        router.delete(route('payroll.destroy', period.id), {
+            preserveScroll: true,
+            onError: (err) => {
+                alert(err.error || 'Gagal menghapus periode.');
+            }
+        });
+    }
+};
+
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
 };
@@ -76,6 +87,16 @@ const formatDate = (dateString) => {
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <!-- Session Errors -->
+                <div v-if="$page.props.errors && $page.props.errors.error" class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm">
+                    <p class="font-bold">Perhatian</p>
+                    <p>{{ $page.props.errors.error }}</p>
+                </div>
+                <div v-if="$page.props.flash && $page.props.flash.success" class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm">
+                    <p class="font-bold">Berhasil</p>
+                    <p>{{ $page.props.flash.success }}</p>
+                </div>
+
                 <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">
                         <table class="w-full text-left text-sm text-gray-500">
@@ -106,10 +127,15 @@ const formatDate = (dateString) => {
                                     <td class="px-6 py-4">
                                         {{ period.items_count }} Karyawan
                                     </td>
-                                    <td class="px-6 py-4 font-medium">
+                                    <td class="px-6 py-4 font-medium flex gap-3">
                                         <Link :href="route('payroll.show', period.id)" class="text-indigo-600 hover:text-indigo-900 hover:underline">
                                             Lihat Detail
                                         </Link>
+                                        <button v-if="period.status === 'draft' && $page.props.auth.user.permissions.includes('delete-payroll')" 
+                                                @click="deletePeriod(period)" 
+                                                class="text-red-500 hover:text-red-700 hover:underline">
+                                            Hapus Draft
+                                        </button>
                                     </td>
                                 </tr>
                                 <tr v-if="periods.data.length === 0">

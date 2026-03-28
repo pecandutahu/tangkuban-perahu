@@ -34,6 +34,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/payroll-periods/{id}/recap', [\App\Http\Controllers\Web\PayrollController::class, 'recap'])->name('payroll.recap');
         Route::get('/payroll-periods/{id}/export-csv', [\App\Http\Controllers\Web\PayrollController::class, 'exportCsv'])->name('payroll.export.csv');
         Route::get('/payroll-periods/{id}/export-bank', [\App\Http\Controllers\Web\PayrollController::class, 'exportBankTransfer'])->name('payroll.export.bank');
+        Route::delete('/payroll-periods/{id}', [\App\Http\Controllers\Web\PayrollController::class, 'destroy'])
+            ->name('payroll.destroy')
+            ->middleware('permission:delete-payroll');
         
         // Payroll Operations (Protected by Session Auth & Specific Spatie Permissions)
         Route::post('/payroll-periods/generate', [\App\Http\Controllers\Api\PayrollGenerationController::class, 'generate'])

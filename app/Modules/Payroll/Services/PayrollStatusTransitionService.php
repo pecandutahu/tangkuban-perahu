@@ -81,6 +81,19 @@ class PayrollStatusTransitionService
     {
         $period = PayrollPeriod::findOrFail($periodId);
 
+        // Validation: Cek apakah periode beririsan dengan periode lain yang aktif saat akan diubah statusnya
+        if (!in_array($newStatus, ['rejected', 'draft'])) {
+            $overlappingPeriod = PayrollPeriod::where('id', '!=', $periodId)
+                ->where('start_date', '<=', $period->end_date)
+                ->where('end_date', '>=', $period->start_date)
+                ->whereNotIn('status', ['rejected'])
+                ->first();
+
+            if ($overlappingPeriod) {
+                throw new Exception("Tidak dapat mengubah status menjadi {$newStatus} karena periode ini beririsan dengan Periode {$overlappingPeriod->code} ({$overlappingPeriod->start_date->format('d/m/Y')} s/d {$overlappingPeriod->end_date->format('d/m/Y')} - Status: {$overlappingPeriod->status}). Silakan hapus salah satu draft.");
+            }
+        }
+
         if ($period->status !== $expectedCurrentStatus && !($expectedCurrentStatus === 'draft' && $period->status === 'draft')) {
            // Allow self transition on draft if needed, but otherwise block it.
            if ($period->status !== $expectedCurrentStatus) {
