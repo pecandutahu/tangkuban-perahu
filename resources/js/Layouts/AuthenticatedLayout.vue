@@ -66,7 +66,7 @@ const showingNavigationDropdown = ref(false);
                                 <div class="hidden sm:flex sm:items-center sm:ms-6" v-if="$page.props.auth.user.permissions.includes('view-master-data')">
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
-                                            <span class="inline-flex rounded-md pt-5">
+                                            <span class="inline-flex rounded-md">
                                                 <button
                                                     type="button"
                                                     class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"

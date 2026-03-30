@@ -222,7 +222,14 @@ const performSearch = () => {
                         :disabled="isRegeneratingAll"
                         :class="{'opacity-50 cursor-wait': isRegeneratingAll}"
                     >
-                        {{ isRegeneratingAll ? '⏳ Menyinkronkan 300+ Data...' : '♻️ Sync Master (Regenerate All)' }}
+                        <span v-if="isRegeneratingAll" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Menyinkronkan 300+ Data...
+                        </span>
+                        <span v-else>♻️ Sync Master (Regenerate All)</span>
                     </SecondaryButton>
 
                     <PrimaryButton v-if="period.status === 'draft' && $page.props.auth.user.permissions.includes('generate-payroll')" @click="openActionModal('Kirim untuk Review', 'Kirim Review', 'mark-as-reviewed')">
@@ -562,8 +569,16 @@ const performSearch = () => {
                         @click="regenerateCurrentItem" 
                         class="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                         :disabled="isRegenerating"
+                        :class="{'opacity-50 cursor-wait': isRegenerating}"
                     >
-                        {{ isRegenerating ? 'Menyinkronkan...' : '♻️ Refresh Data Master (Regenerate)' }}
+                        <span v-if="isRegenerating" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Menyinkronkan...
+                        </span>
+                        <span v-else>♻️ Refresh Data Master</span>
                     </SecondaryButton>
                     <PrimaryButton @click="closeDetailModal" class="bg-indigo-600 hover:bg-indigo-700">Tutup Rincian</PrimaryButton>
                 </div>

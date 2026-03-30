@@ -54,31 +54,25 @@ class GeneratePayrollService
                     'branch:id,name',
                 ])->where('is_active', true)->get();
 
+                // 4.1. Pra-muat seluruh Template Gaji ke Memory Cache untuk menghindari N+1 query
+                $cachedTemplates = \App\Models\PayrollTemplate::with('components.component')->get();
+
+                $now = now();
+                $itemsToInsert = [];
+                $componentsDataCache = []; 
+
+                // 5. Kalkulasi di Memory dan Siapkan Data Bulk
                 foreach ($employees as $employee) {
-                    // Gunakan Resolver untuk cari template
                     try {
-                        $template = PayrollTemplateResolver::resolve($employee);
+                        $template = PayrollTemplateResolver::resolve($employee, $cachedTemplates);
                     } catch (\DomainException $e) {
                         continue; 
                     }
 
-                    // 5. Buat PayrollItem per karyawan
-                    $item = PayrollItem::create([
-                        'payroll_period_id' => $period->id,
-                        'employee_id'       => $employee->id,
-                        'employee_name'     => $employee->name,
-                        'department_name'   => $employee->department?->name,
-                        'branch_name'       => $employee->branch?->name,
-                        'status'            => 'draft',
-                        'total_bruto'       => 0,
-                        'total_deduction'   => 0,
-                        'total_netto'       => 0,
-                    ]);
-
                     $totalBruto = 0;
                     $totalDeduction = 0;
+                    $employeeComponentsToInsert = [];
 
-                    // Buat map/kamus dari komponen spesifik untuk kemudahan override
                     $specificComponentsMap = [];
                     foreach ($employee->specificComponents as $specComp) {
                         if ($specComp->is_active && $specComp->component) {
@@ -88,67 +82,94 @@ class GeneratePayrollService
 
                     $processedComponentIds = [];
 
-                    // 6. Salin semua template komponen ke item
+                    // Proses komponen dari template
                     foreach ($template->components as $templateComponent) {
                         $component = $templateComponent->component;
-                        
-                        if (!$component || !$component->is_active) {
-                            continue;
-                        }
+                        if (!$component || !$component->is_active) continue;
 
                         $processedComponentIds[] = $component->id;
 
-                        // Gunakan nilai milik Karyawan Khusus jika ada (Override), kalau tidak pakai default_amount Jabatan
                         $amount = isset($specificComponentsMap[$component->id]) 
                             ? $specificComponentsMap[$component->id]->amount 
                             : $component->default_amount;
 
-                        PayrollItemComponent::create([
-                            'payroll_item_id' => $item->id,
+                        $employeeComponentsToInsert[] = [
                             'payroll_component_id' => $component->id,
                             'component_code' => $component->code,
                             'component_name' => $component->name,
                             'component_type' => $component->component_type,
                             'amount' => $amount,
                             'source' => isset($specificComponentsMap[$component->id]) ? 'OVR_EMP' : 'SYSTEM',
-                        ]);
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
 
-                        if ($component->component_type === 'earning') {
-                            $totalBruto += $amount;
-                        } elseif ($component->component_type === 'deduction') {
-                            $totalDeduction += $amount;
-                        }
+                        if ($component->component_type === 'earning') $totalBruto += $amount;
+                        elseif ($component->component_type === 'deduction') $totalDeduction += $amount;
                     }
 
-                    // 7. Salin komponen spesifik yang belum tertampung oleh template jabatan (Append)
+                    // Proses sisa komponen spesifik
                     foreach ($specificComponentsMap as $compId => $specComp) {
                         if (!in_array($compId, $processedComponentIds)) {
                             $component = $specComp->component;
 
-                            PayrollItemComponent::create([
-                                'payroll_item_id' => $item->id,
+                            $employeeComponentsToInsert[] = [
                                 'payroll_component_id' => $component->id,
                                 'component_code' => $component->code,
                                 'component_name' => $component->name,
                                 'component_type' => $component->component_type,
                                 'amount' => $specComp->amount,
                                 'source' => 'OVR_ADD',
-                            ]);
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
 
-                            if ($component->component_type === 'earning') {
-                                $totalBruto += $specComp->amount;
-                            } elseif ($component->component_type === 'deduction') {
-                                $totalDeduction += $specComp->amount;
-                            }
+                            if ($component->component_type === 'earning') $totalBruto += $specComp->amount;
+                            elseif ($component->component_type === 'deduction') $totalDeduction += $specComp->amount;
                         }
                     }
 
-                    // Hitung ulang summary item
-                    $item->update([
-                        'total_bruto' => $totalBruto,
-                        'total_deduction' => $totalDeduction,
-                        'total_netto' => $totalBruto - $totalDeduction,
-                    ]);
+                    // Susun Data Item (Sudah terhitung Nettonya)
+                    $itemsToInsert[] = [
+                        'payroll_period_id' => $period->id,
+                        'employee_id'       => $employee->id,
+                        'employee_name'     => $employee->name,
+                        'department_name'   => $employee->department?->name,
+                        'branch_name'       => $employee->branch?->name,
+                        'status'            => 'draft',
+                        'total_bruto'       => $totalBruto,
+                        'total_deduction'   => $totalDeduction,
+                        'total_netto'       => $totalBruto - $totalDeduction,
+                        'created_at'        => $now,
+                        'updated_at'        => $now,
+                    ];
+
+                    // Simpan sementara referensi komponen employee_id
+                    $componentsDataCache[$employee->id] = $employeeComponentsToInsert;
+                }
+
+                // 6. Eksekusi Bulk Insert Payroll Items
+                foreach (array_chunk($itemsToInsert, 500) as $chunk) {
+                    PayrollItem::insert($chunk);
+                }
+
+                // 7. Ambil kembali Items yang barusan disimpan untuk mendapatkan auto-increment `id`
+                $insertedItems = PayrollItem::where('payroll_period_id', $period->id)->get(['id', 'employee_id']);
+
+                $finalComponentsToInsert = [];
+                foreach ($insertedItems as $insertedItem) {
+                    $empId = $insertedItem->employee_id;
+                    if (isset($componentsDataCache[$empId])) {
+                        foreach ($componentsDataCache[$empId] as $compRow) {
+                            $compRow['payroll_item_id'] = $insertedItem->id; // Assign Parent ID
+                            $finalComponentsToInsert[] = $compRow;
+                        }
+                    }
+                }
+
+                // 8. Eksekusi Bulk Insert Payroll Item Components
+                foreach (array_chunk($finalComponentsToInsert, 1000) as $chunk) {
+                    PayrollItemComponent::insert($chunk);
                 }
 
                 return $period;
