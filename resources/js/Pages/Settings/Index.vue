@@ -25,6 +25,7 @@ const form = useForm({
     settings: {
         pph21_calculator_version: props.settings.pph21_calculator_version || 'ter_2024',
         pph21_excluded_components: props.settings.pph21_excluded_components || [],
+        bpjs_enabled: props.settings.bpjs_enabled ?? true,
         bpjs_rates: Object.assign({}, bpjsDefaults, props.settings.bpjs_rates || {}),
     }
 });
@@ -120,13 +121,23 @@ const companyRateFields = [
                     <!-- ====== BAGIAN BPJS ====== -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
-                            <h3 class="text-lg font-bold mb-1">Konfigurasi Tarif BPJS</h3>
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="text-lg font-bold">Konfigurasi Tarif BPJS</h3>
+                                <div class="flex items-center">
+                                    <label for="bpjs_enabled" class="mr-3 text-sm font-medium text-gray-700">Aktifkan BPJS?</label>
+                                    <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" id="bpjs_enabled" v-model="form.settings.bpjs_enabled" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" style="top: 2px; left: 2px;" :class="{'right-1 border-green-400': form.settings.bpjs_enabled, 'border-gray-300': !form.settings.bpjs_enabled}"/>
+                                        <label for="bpjs_enabled" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-300 cursor-pointer" :class="{'bg-green-400': form.settings.bpjs_enabled}"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <p class="text-sm text-gray-500 mb-5">
-                                Tarif iuran BPJS dalam persen (%). Perubahan akan berlaku di sinkronisasi BPJS berikutnya.
+                                Jika dinonaktifkan, perhitungan / potongan BPJS pada proses penggajian (Generate Payroll) ditiadakan.
                                 <br>Tarif dasar merujuk peraturan pemerintah yang berlaku.
                             </p>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8" :class="{'opacity-50 pointer-events-none': !form.settings.bpjs_enabled}">
 
                                 <!-- Karyawan -->
                                 <div>
@@ -186,3 +197,14 @@ const companyRateFields = [
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.toggle-checkbox:checked {
+  right: 0 !important;
+  left: auto !important;
+  border-color: #4ade80 !important;
+}
+.toggle-checkbox {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+</style>

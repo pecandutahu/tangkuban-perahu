@@ -29,7 +29,12 @@ class BpjsCalculatorService
      */
     public static function calculateForAdmin(Employee $employee, array $submittedComponents = []): array
     {
-        // --- 0. Baca tarif dari settings DB ---
+        // --- 0. Baca tarif dan status modul dari settings DB ---
+        $isBpjsEnabled = DB::table('settings')->where('key', 'bpjs_enabled')->value('value');
+        if ($isBpjsEnabled !== null && !filter_var($isBpjsEnabled, FILTER_VALIDATE_BOOLEAN)) {
+            return $submittedComponents; // BPJS Dinonaktifkan secara global, kembalikan saja override manual tanpa kalkulasi BPJS.
+        }
+
         $rates = self::getRates();
 
         // --- 1. Cari komponen 'GP' global ---

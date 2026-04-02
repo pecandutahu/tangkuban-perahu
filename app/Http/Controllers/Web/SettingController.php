@@ -21,6 +21,13 @@ class SettingController extends Controller
             $settings['pph21_calculator_version'] = 'ter_2024';
         }
 
+        // --- BPJS Toggle default ---
+        if (!isset($settings['bpjs_enabled'])) {
+            $settings['bpjs_enabled'] = true;
+        } else {
+            $settings['bpjs_enabled'] = filter_var($settings['bpjs_enabled'], FILTER_VALIDATE_BOOLEAN);
+        }
+
         if (isset($settings['pph21_excluded_components'])) {
             $settings['pph21_excluded_components'] = json_decode($settings['pph21_excluded_components'], true);
         } else {
@@ -69,6 +76,7 @@ class SettingController extends Controller
             'settings.pph21_excluded_components'        => 'nullable|array',
             'settings.pph21_excluded_components.*'      => 'exists:payroll_components,id',
             // BPJS rates validation
+            'settings.bpjs_enabled'                     => 'required|boolean',
             'settings.bpjs_rates'                       => 'nullable|array',
             'settings.bpjs_rates.jht_employee'          => 'nullable|numeric|min:0|max:100',
             'settings.bpjs_rates.jp_employee'           => 'nullable|numeric|min:0|max:100',
