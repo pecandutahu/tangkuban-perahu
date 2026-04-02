@@ -34,6 +34,16 @@ php artisan migrate:refresh --seed
 npm run dev
 ```
 
+### 🧹 Membersihkan Data Demo (Persiapan Production/Live)
+Jika Anda menginstal sistem menggunakan instruksi instalasi di atas (`--seed`), sistem akan otomatis diisi ratusan data karyawan bohongan (dummy) beserta transaksi _payroll_-nya untuk keperluan percobaan.
+
+Sebelum aplikasi digunakan secara nyata, bersihkan data-data demo / transaksi tanpa menghapus konfigurasi **Data Master** (jabatan, branch, hak akses dsb) Anda lewat perintah berikut:
+
+```bash
+php artisan app:clean-demo
+```
+Perintah ini akan secara aman menyapu bersih seluruh data karyawan dan transaksi slip gaji lama.
+
 ---
 
 ## 🗂️ Fitur Utama
