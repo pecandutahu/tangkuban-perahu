@@ -57,6 +57,28 @@ class GeneratePayrollService
                 // 4.1. Pra-muat seluruh Template Gaji ke Memory Cache untuk menghindari N+1 query
                 $cachedTemplates = \App\Models\PayrollTemplate::with('components.component')->get();
 
+                // Konfigurasi Pengecualian Komponen BPJS
+                $excludedComponentIds = [];
+                $exSetting = \App\Models\Setting::where('key', 'pph21_excluded_components')->first();
+                if ($exSetting && !empty($exSetting->value)) {
+                    $excludedComponentIds = json_decode($exSetting->value, true) ?? [];
+                }
+                
+                $taxStrategy = \App\Modules\Payroll\Calculators\Pph21CalculatorFactory::make();
+                $taxComponent = null;
+                if ($taxStrategy) {
+                    $taxComponent = \App\Models\PayrollComponent::firstOrCreate(
+                        ['code' => 'TAX_PPH21'],
+                        [
+                            'name' => 'Potongan PPh 21',
+                            'component_type' => 'deduction',
+                            'is_taxable' => false,
+                            'default_amount' => 0,
+                            'is_active' => true,
+                        ]
+                    );
+                }
+
                 $now = now();
                 $itemsToInsert = [];
                 $componentsDataCache = []; 
@@ -71,6 +93,7 @@ class GeneratePayrollService
 
                     $totalBruto = 0;
                     $totalDeduction = 0;
+                    $taxableBruto = 0;
                     $employeeComponentsToInsert = [];
 
                     $specificComponentsMap = [];
@@ -104,8 +127,15 @@ class GeneratePayrollService
                             'updated_at' => $now,
                         ];
 
-                        if ($component->component_type === 'earning') $totalBruto += $amount;
-                        elseif ($component->component_type === 'deduction') $totalDeduction += $amount;
+                        if ($component->component_type === 'earning') {
+                            $totalBruto += $amount;
+                            $taxableBruto += $amount;
+                        } elseif ($component->component_type === 'deduction') {
+                            $totalDeduction += $amount;
+                            if (in_array($component->id, $excludedComponentIds)) {
+                                $taxableBruto -= $amount;
+                            }
+                        }
                     }
 
                     // Proses sisa komponen spesifik
@@ -124,9 +154,34 @@ class GeneratePayrollService
                                 'updated_at' => $now,
                             ];
 
-                            if ($component->component_type === 'earning') $totalBruto += $specComp->amount;
-                            elseif ($component->component_type === 'deduction') $totalDeduction += $specComp->amount;
+                            if ($component->component_type === 'earning') {
+                                $totalBruto += $specComp->amount;
+                                $taxableBruto += $specComp->amount;
+                            } elseif ($component->component_type === 'deduction') {
+                                $totalDeduction += $specComp->amount;
+                                if (in_array($component->id, $excludedComponentIds)) {
+                                    $taxableBruto -= $specComp->amount;
+                                }
+                            }
                         }
+                    }
+
+                    // Hitung Pajak PPh21 menggunakan Nilai Bruto yang telah dipotong Iuran (Jika ada)
+                    $pph21Amount = $taxStrategy ? $taxStrategy->calculate($employee, $taxableBruto) : 0;
+
+                    if ($pph21Amount > 0 && $taxComponent) {
+                        $employeeComponentsToInsert[] = [
+                            'payroll_component_id' => $taxComponent->id,
+                            'component_code' => $taxComponent->code,
+                            'component_name' => $taxComponent->name,
+                            'component_type' => 'deduction',
+                            'amount' => $pph21Amount,
+                            'source' => 'SYSTEM_TAX',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+
+                        $totalDeduction += $pph21Amount;
                     }
 
                     // Susun Data Item (Sudah terhitung Nettonya)
