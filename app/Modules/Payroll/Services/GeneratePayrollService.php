@@ -399,14 +399,204 @@ class GeneratePayrollService
             }
 
             $items = PayrollItem::where('payroll_period_id', $periodId)->get();
+            if ($items->isEmpty()) return $period;
+
+            $itemIds = $items->pluck('id')->toArray();
+            $employeeIds = $items->pluck('employee_id')->toArray();
+
+            // 1. Bulk Delete komponen sistem/override yang lama
+            PayrollItemComponent::whereIn('payroll_item_id', $itemIds)
+                ->whereIn('source', ['SYSTEM', 'OVR_EMP', 'OVR_ADD', 'SYSTEM_TAX'])
+                ->delete();
+
+            // 2. Ambil karyawan terkait beserta komponen khususnya
+            $employees = Employee::with('specificComponents.component')
+                ->whereIn('id', $employeeIds)
+                ->where('is_active', true)
+                ->get()
+                ->keyBy('id');
+
+            // 3. Ambil sisa komponen (seperti IMPORT / MANUAL) yang harus dipertahankan
+            $remainingComponents = PayrollItemComponent::whereIn('payroll_item_id', $itemIds)
+                ->get()
+                ->groupBy('payroll_item_id');
+
+            // 4. Pra-muat seluruh Template
+            $cachedTemplates = \App\Models\PayrollTemplate::with('components.component')->get();
+
+            // 5. Konfigurasi Setting Pajak dll
+            $excludedComponentIds = [];
+            $exSetting = \App\Models\Setting::where('key', 'pph21_excluded_components')->first();
+            if ($exSetting && !empty($exSetting->value)) {
+                $excludedComponentIds = json_decode($exSetting->value, true) ?? [];
+            }
             
+            $taxStrategy = \App\Modules\Payroll\Calculators\Pph21CalculatorFactory::make();
+            $taxComponent = null;
+            if ($taxStrategy) {
+                $taxComponent = \App\Models\PayrollComponent::firstOrCreate(
+                    ['code' => 'TAX_PPH21'],
+                    [
+                        'name' => 'Potongan PPh 21',
+                        'component_type' => 'deduction',
+                        'is_taxable' => false,
+                        'default_amount' => 0,
+                        'is_active' => true,
+                    ]
+                );
+            }
+
+            $now = now();
+            $componentsToInsert = [];
+            $itemsToUpdate = [];
+
+            // 6. Kalkulasi Memory Berjalan
             foreach ($items as $item) {
-                // Kita bisa melakukan pemanggilan langsung fungsi regenerateItem 
-                // Karena kita sudah ada di dalam db transaction.
-                // Parameter kedua adalah itemId. $this->regenerateItem($periodId, $item->id)
-                // Wait: regenerateItem also has its own DB::transaction, which is safe in Laravel (nested transaction),
-                // tapi alangkah baiknya kita hindari recursive transaction wrap jika perlu, atau panggil saja langsung.
-                $this->regenerateItem($periodId, $item->id);
+                $employee = $employees->get($item->employee_id);
+                
+                // Variabel perhitungan total (netto) untuk satu item payroll
+                $totalBruto = 0;
+                $totalDeduction = 0;
+                $taxableBruto = 0;
+
+                // Hitung kembali komponen impor/manual yang tidak terhapus
+                $remains = $remainingComponents->get($item->id);
+                if ($remains) {
+                    foreach ($remains as $comp) {
+                        if ($comp->component_type === 'earning') {
+                            $totalBruto += $comp->amount;
+                            $taxableBruto += $comp->amount;
+                        } elseif ($comp->component_type === 'deduction') {
+                            $totalDeduction += $comp->amount;
+                            if (in_array($comp->payroll_component_id, $excludedComponentIds)) {
+                                $taxableBruto -= $comp->amount;
+                            }
+                        }
+                    }
+                }
+
+                // Jika karyawan masih aktif dan ditemukan
+                if ($employee) {
+                    try {
+                        $template = PayrollTemplateResolver::resolve($employee, $cachedTemplates);
+                    } catch (\DomainException $e) {
+                        $template = null;
+                    }
+
+                    $specificComponentsMap = [];
+                    foreach ($employee->specificComponents as $specComp) {
+                        if ($specComp->is_active && $specComp->component) {
+                            $specificComponentsMap[$specComp->component->id] = $specComp;
+                        }
+                    }
+
+                    $processedComponentIds = [];
+
+                    if ($template) {
+                        foreach ($template->components as $templateComponent) {
+                            $component = $templateComponent->component;
+                            if (!$component || !$component->is_active) continue;
+
+                            $processedComponentIds[] = $component->id;
+
+                            $amount = isset($specificComponentsMap[$component->id]) 
+                                ? $specificComponentsMap[$component->id]->amount 
+                                : $component->default_amount;
+
+                            $componentsToInsert[] = [
+                                'payroll_item_id' => $item->id,
+                                'payroll_component_id' => $component->id,
+                                'component_code' => $component->code,
+                                'component_name' => $component->name,
+                                'component_type' => $component->component_type,
+                                'amount' => $amount,
+                                'source' => isset($specificComponentsMap[$component->id]) ? 'OVR_EMP' : 'SYSTEM',
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+
+                            if ($component->component_type === 'earning') {
+                                $totalBruto += $amount;
+                                $taxableBruto += $amount;
+                            } elseif ($component->component_type === 'deduction') {
+                                $totalDeduction += $amount;
+                                if (in_array($component->id, $excludedComponentIds)) {
+                                    $taxableBruto -= $amount;
+                                }
+                            }
+                        }
+                    }
+
+                    // Sisa dari specific component (komponen ganda/tambahan)
+                    foreach ($specificComponentsMap as $compId => $specComp) {
+                        if (!in_array($compId, $processedComponentIds)) {
+                            $component = $specComp->component;
+                            $componentsToInsert[] = [
+                                'payroll_item_id' => $item->id,
+                                'payroll_component_id' => $component->id,
+                                'component_code' => $component->code,
+                                'component_name' => $component->name,
+                                'component_type' => $component->component_type,
+                                'amount' => $specComp->amount,
+                                'source' => 'OVR_ADD',
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+
+                            if ($component->component_type === 'earning') {
+                                $totalBruto += $specComp->amount;
+                                $taxableBruto += $specComp->amount;
+                            } elseif ($component->component_type === 'deduction') {
+                                $totalDeduction += $specComp->amount;
+                                if (in_array($component->id, $excludedComponentIds)) {
+                                    $taxableBruto -= $specComp->amount;
+                                }
+                            }
+                        }
+                    }
+
+                    // Hitung PPh21 untuk employee
+                    $pph21Amount = $taxStrategy ? $taxStrategy->calculate($employee, $taxableBruto) : 0;
+
+                    if ($pph21Amount > 0 && $taxComponent) {
+                        $componentsToInsert[] = [
+                            'payroll_item_id' => $item->id,
+                            'payroll_component_id' => $taxComponent->id,
+                            'component_code' => $taxComponent->code,
+                            'component_name' => $taxComponent->name,
+                            'component_type' => 'deduction',
+                            'amount' => $pph21Amount,
+                            'source' => 'SYSTEM_TAX',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+
+                        $totalDeduction += $pph21Amount;
+                    }
+                }
+
+                // 7. Simpan total akhir
+                $itemsToUpdate[] = [
+                    'id'              => $item->id,
+                    'total_bruto'     => $totalBruto,
+                    'total_deduction' => $totalDeduction,
+                    'total_netto'     => $totalBruto - $totalDeduction,
+                ];
+            }
+
+            // 8. Bulk Insert Komponen Baru
+            foreach (array_chunk($componentsToInsert, 1000) as $chunk) {
+                PayrollItemComponent::insert($chunk);
+            }
+
+            // 9. Bulk Update kalkulasi Parent Item 
+            // Query satu per satu sangat ringan (<50ms per batch 500) karena berada di dalam 1 buah DB transaction
+            foreach ($itemsToUpdate as $data) {
+                PayrollItem::where('id', $data['id'])->update([
+                    'total_bruto'     => $data['total_bruto'],
+                    'total_deduction' => $data['total_deduction'],
+                    'total_netto'     => $data['total_netto'],
+                ]);
             }
 
             return $period;
