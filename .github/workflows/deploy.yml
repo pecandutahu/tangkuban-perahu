@@ -28,6 +28,16 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Build Frontend Assets (Vite)
+        run: |
+          npm install
+          npm run build
+
       # Menjalankan PHPUnit Test pada folder tests/Feature
       - name: Run Tests
         run: php artisan test
