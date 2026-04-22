@@ -42,7 +42,7 @@ class PayrollLockingTest extends TestCase
 
         // Transisi ke Reviewed -> Approved
         $service = new PayrollStatusTransitionService();
-        $service->markAsReviewed($period->id);
+        $service->markAsReviewed($period->id, 1);
         $service->markAsApproved($period->id, 99); // 99 is approver ID
 
         // Cek DB Status berubah
