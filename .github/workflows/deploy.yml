@@ -1,0 +1,72 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Trigger khusus ketika ada push ke branch main
+
+jobs:
+  # JOB 1: Test & Linting (Continous Integration)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Generate Application Key (Testing)
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Jika ada PHPUnit Test
+      - name: Run Tests
+        run: php artisan test
+
+  # JOB 2: Deploy ke VPS Server (Continous Deployment)
+  deploy:
+    needs: test # Workflow ini hanya jalan JIKA JOB 'test' SUKSES 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Eksekusi Perintah Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            # 1. Pindah ke direktori web
+            cd /var/www/payroll-app
+            
+            # 2. Ambil update kodingan terbaru
+            git pull origin main
+            
+            # 3. Update PHP Dependencies
+            composer install --optimize-autoloader --no-dev
+            
+            # 4. Update Node Modules dan Re-Build Vue / Tailwind
+            npm install
+            npm run build
+            
+            # 5. Eksekusi migrasi database jika ada perubahan schema
+            php artisan migrate --force
+            
+            # 6. Bersihkan dan bangun ulang cache untuk optimasi
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan event:cache
+            php artisan route:cache
+            php artisan view:cache
+            
+            # 7. Selesai
+            echo "Deployment Sukses!"

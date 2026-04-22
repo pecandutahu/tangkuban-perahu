@@ -273,3 +273,117 @@ Selamat, aplikasi Payroll Anda sekarang berjalan secara Production di server And
 
 untuk hapus data demo : 
 php artisan app:clean-demo
+
+---
+
+## 🚀 13. Setup CI/CD Auto-Deploy via GitHub Actions
+
+Agar setiap kali Anda melakukan **Push / Merge** ke *branch* `main` di GitHub kode otomatis ter-update dan ter-compile di VPS, lakukan langkah-langkah berikut:
+
+### Langkah 1: Buat SSH Key untuk GitHub
+Di VPS Anda, buat pasangan kunci SSH khusus (jika belum punya) yang akan dipakai oleh robot GitHub:
+```bash
+ssh-keygen -t rsa -b 4096 -C "github-actions-deploy"
+```
+*(Tekan Enter terus sampai selesai untuk melewati pertanyaan password)*
+
+Tambahkan kunci *Public* ke daftar izin otorisasi server Anda:
+```bash
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+```
+
+Tampilkan dan **Kopi/Salin** isi kunci Rahasia (*Private Key*) Anda:
+```bash
+cat ~/.ssh/id_rsa
+```
+*(Blok seluruh isinya dari `-----BEGIN OPENSSH PRIVATE KEY-----` sampai `-----END OPENSSH PRIVATE KEY-----`)*
+
+### Langkah 2: Daftarkan Secrets di GitHub Repo
+Buka Repositori GitHub Anda di Browser:
+Ke Menu **Settings** -> **Secrets and variables** -> **Actions** -> klik **New repository secret**.
+
+Tambahkan 3 *Secrets* berikut secara bergantian:
+1. Name: `SERVER_HOST` | Secret: Isi dengan Alamat IP VPS Anda (Contoh: `192.168.1.1`)
+2. Name: `SERVER_USERNAME` | Secret: Isi dengan tipe login (Contoh: `root` atau `ubuntu`)
+3. Name: `SERVER_SSH_KEY` | Secret: *Paste* seluruh isi dari `~/.ssh/id_rsa` yang Anda *kopi* di Langkah 1 tadi.
+
+### Langkah 3: Buat File Konfigurasi Workflow di Kode Anda
+Di dalam kode proyek lokal (*VS Code Anda*), buat sebuah folder `.github/workflows/` lalu buat file `deploy.yml`:
+
+```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Trigger khusus ketika ada push ke branch main
+
+jobs:
+  # JOB 1: Test & Linting (Continous Integration)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Generate Application Key (Testing)
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Jika ada PHPUnit Test
+      - name: Run Tests
+        run: php artisan test
+
+  # JOB 2: Deploy ke VPS Server (Continous Deployment)
+  deploy:
+    needs: test # Workflow ini hanya jalan JIKA JOB 'test' SUKSES 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Eksekusi Perintah Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            # 1. Pindah ke direktori web
+            cd /var/www/payroll-app
+            
+            # 2. Ambil update kodingan terbaru
+            git pull origin main
+            
+            # 3. Update PHP Dependencies
+            composer install --optimize-autoloader --no-dev
+            
+            # 4. Update Node Modules dan Re-Build Vue / Tailwind
+            npm install
+            npm run build
+            
+            # 5. Eksekusi migrasi database jika ada perubahan schema
+            php artisan migrate --force
+            
+            # 6. Bersihkan dan bangun ulang cache untuk optimasi
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan event:cache
+            php artisan route:cache
+            php artisan view:cache
+            
+            # 7. Selesai
+            echo "Deployment Sukses!"
+```
+
+### Langkah 4: Commit dan Nikmati Auto-Deploy
+Tinggal *Commit* `deploy.yml` ini ke GitHub Anda, dan setiap kali kode masuk ke `main`, GitHub akan meremote server Anda untuk melakukan *Pull*, *Build Vue NPM*, dan mem-*flush Cache* Laravel secara mandiri tanpa menyentuh terminal VPS lagi!
