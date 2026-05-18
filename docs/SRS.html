@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Software Requirements Specification (SRS) - Sobat Gaji</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h1, h2, h3, h4 { color: #2c3e50; }
+        h1 { border-bottom: 2px solid #27ae60; padding-bottom: 0.5rem; }
+        h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+        .req-id { font-family: monospace; font-weight: bold; color: #2980b9; }
+        .meta-info { background: #f8f9fa; padding: 1rem; border-radius: 5px; margin-bottom: 2rem; }
+        .meta-info p { margin: 0.2rem 0; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #d63031; }
+    </style>
+</head>
+<body>
+    <h1>Software Requirements Specification (SRS)</h1>
+    
+    <div class="meta-info">
+        <p><strong>Nama Perangkat Lunak:</strong> Sobat Gaji (Payroll Trucking System)</p>
+        <p><strong>Versi Dokumen:</strong> 1.0</p>
+        <p><strong>Platform:</strong> Aplikasi Berbasis Web</p>
+    </div>
+
+    <h2>1. Pendahuluan</h2>
+    <h3>1.1 Tujuan</h3>
+    <p>Dokumen SRS ini memberikan deskripsi komprehensif mengenai spesifikasi teknis dan fungsionalitas perangkat lunak Sobat Gaji. Dokumen ini digunakan sebagai referensi teknis yang dapat dibaca dan diperbarui di sepanjang siklus pengembangan aplikasi.</p>
+    
+    <h3>1.2 Lingkup Perangkat Lunak</h3>
+    <p>Perangkat lunak ini dibangun menggunakan arsitektur modern dengan backend <strong>Laravel 11</strong> (PHP 8.2+) dan frontend SPA (Single Page Application) menggunakan <strong>Vue 3 (Composition API)</strong> yang dihubungkan melalui <strong>Inertia.js</strong>. Sistem ini menangani perhitungan payroll khusus trucking (Gaji Pokok, Uang Jalan, Klaim) ditambah kalkulasi BPJS Kesehatan & Ketenagakerjaan otomatis secara proporsional serta PPh 21 TER 2024.</p>
+
+    <h2>2. Kebutuhan Fungsional (Functional Requirements)</h2>
+    
+    <h3>2.1 Modul Autentikasi & Keamanan</h3>
+    <table>
+        <tr><td class="req-id">FR-01</td><td>Sistem mengimplementasikan proteksi login Brute-Force menggunakan validasi Math Captcha di sisi server.</td></tr>
+        <tr><td class="req-id">FR-02</td><td>Sistem mengadopsi struktur Role-Based Access Control (RBAC) memanfaatkan package <code>spatie/laravel-permission</code> untuk mengamankan route dan fitur antarmuka berdasarkan role pengguna (Super Admin, Admin, Finance, Operator).</td></tr>
+    </table>
+
+    <h3>2.2 Modul Master Data Utama</h3>
+    <table>
+        <tr><td class="req-id">FR-03</td><td>Manajemen Cabang: Mendukung CRUD data cabang dan nilai <code>umr_amount</code> (berfungsi sebagai threshold kalkulasi asuransi sosial BPJS).</td></tr>
+        <tr><td class="req-id">FR-04</td><td>Manajemen Karyawan: Mengelola data lengkap termasuk relasi ke Cabang, Jabatan, Status PTKP, dan menyimpan besaran dasar Gaji Pokok (GP).</td></tr>
+        <tr><td class="req-id">FR-05</td><td>Manajemen Komponen & Template: Admin dapat mendefinisikan kamus Komponen (Earning/Deduction) dan menggabungkannya ke dalam Template Gaji berdasarkan jabatan/peran.</td></tr>
+    </table>
+
+    <h3>2.3 Modul BPJS & Perhitungan Otomatis</h3>
+    <table>
+        <tr><td class="req-id">FR-06</td><td>Sistem menyediakan <code>BpjsCalculatorService</code> yang otomatis menghasilkan 6 komponen standar (JHT, JP, Kes untuk Karyawan dan Perusahaan) ketika form karyawan baru/update dikirim dari antarmuka (Hybrid Approach).</td></tr>
+        <tr><td class="req-id">FR-07</td><td>Dasar pengali BPJS secara dinamis membandingkan Gaji Pokok karyawan dan UMR cabang, dan menggunakan nilai yang paling besar.</td></tr>
+        <tr><td class="req-id">FR-08</td><td>Sistem menyediakan perintah Command Line <code>php artisan payroll:sync-bpjs</code> untuk meregenerasi (sync) data potongan BPJS seluruh karyawan apabila terjadi perubahan regulasi persentase tarif secara global.</td></tr>
+    </table>
+
+    <h3>2.4 Modul PPh21 & Eksekusi Payroll (Generation)</h3>
+    <table>
+        <tr><td class="req-id">FR-09</td><td>Kalkulator PPh21 terintegrasi pada fase <em>Generate Payroll</em>, menghitung pajak berdasar Tarif Efektif Rata-rata (TER) dan nilai Gross komponen yang ditandai kena pajak.</td></tr>
+        <tr><td class="req-id">FR-10</td><td>Proses <em>Generate Payroll</em> menyalin susunan Template Gaji dan Komponen Override karyawan untuk dicetak secara permanen ke dalam tabel riwayat <code>payroll_slips</code>.</td></tr>
+        <tr><td class="req-id">FR-11</td><td>Fungsionalitas Locking: Periode dan slip gaji yang telah diselesaikan dapat dikunci (Locked/Published), sehingga imun dari modifikasi eksternal.</td></tr>
+    </table>
+
+    <h2>3. Kebutuhan Non-Fungsional (Non-Functional Requirements)</h2>
+    <ul>
+        <li><strong>Infrastruktur Frontend:</strong> Menggunakan <strong>Tailwind CSS</strong> untuk penataan visual gaya modern, efisien, dan responsif. Interaktivitas difasilitasi oleh komponen-komponen Vue 3.</li>
+        <li><strong>Continuous Integration / Deployment:</strong> Aplikasi memiliki kapabilitas automasi testing (dengan database memori SQLite via <code>phpunit.xml</code>) dan auto-deployment ke environment VPS berbasis Linux (Ubuntu) yang diorkestrasi melalui GitHub Actions Workflow.</li>
+        <li><strong>Integritas Data:</strong> Menggunakan validasi Form Request dari sisi backend Laravel untuk menjamin bahwa data masukan angka (gaji pokok, uang jalan) diformat dengan benar sebelum masuk database PostgreSQL/MySQL.</li>
+    </ul>
+
+    <h2>4. Pemetaan Struktur Basis Data (Database Structure)</h2>
+    <p>Skema basis data relasional dikelola secara komprehensif menggunakan sistem migrasi Laravel:</p>
+    <ul>
+        <li><code>employees</code>: Data demografi, finansial dasar, dan FK untuk PTKP, branch, dan role.</li>
+        <li><code>branch</code>: Entri multi-lokasi termasuk <code>umr_amount</code>.</li>
+        <li><code>settings</code>: Kumpulan konfigurasi dinamis (persentase JKK, versi PPh21 aktif, dsb).</li>
+        <li><code>payroll_components</code> & <code>payroll_templates</code>: Arsitektur penyusun komponen slip gaji.</li>
+        <li><code>employee_components</code>: Komponen individual dan override, termasuk penyimpan hasil potong BPJS hybrid.</li>
+        <li><code>payroll_periods</code> & <code>payroll_slips</code>: Perekaman snapshot payroll setiap siklus (bulanan).</li>
+    </ul>
+
+    <h2>5. Antarmuka Sistem (System Interfaces)</h2>
+    <ul>
+        <li><strong>Web Frontend (User Interface):</strong> Dibangun menggunakan komponen Inertia.js untuk menghadirkan pengalaman navigasi SPA yang mulus tanpa refresh halaman saat mengelola payroll.</li>
+        <li><strong>Artisan Console Interface:</strong> Menyediakan custom command untuk tugas maintenance administratif seperti <code>app:clean-demo</code> dan sinkronisasi data master.</li>
+    </ul>
+</body>
+</html>

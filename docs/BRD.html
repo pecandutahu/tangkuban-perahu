@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Requirements Document (BRD) - Sobat Gaji</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h1, h2, h3, h4 { color: #2c3e50; }
+        h1 { border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; }
+        h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; margin-top: 2rem; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+        .req-id { font-family: monospace; font-weight: bold; color: #e74c3c; }
+        .meta-info { background: #f8f9fa; padding: 1rem; border-radius: 5px; margin-bottom: 2rem; }
+        .meta-info p { margin: 0.2rem 0; }
+    </style>
+</head>
+<body>
+    <h1>Business Requirements Document (BRD)</h1>
+    
+    <div class="meta-info">
+        <p><strong>Nama Proyek:</strong> Sobat Gaji (Payroll Trucking System)</p>
+        <p><strong>Dokumen Dibuat:</strong> Mei 2026</p>
+        <p><strong>Status:</strong> Aktif / Dalam Pengembangan</p>
+    </div>
+
+    <h2>1. Ringkasan Eksekutif</h2>
+    <p>Sobat Gaji (sebelumnya PilarHR) adalah sistem informasi penggajian (payroll) berbasis web yang dirancang khusus untuk memenuhi kebutuhan perusahaan di sektor logistik dan transportasi (trucking). Sistem ini bertujuan untuk mengotomatisasi perhitungan gaji yang kompleks, termasuk komponen tetap (gaji pokok, tunjangan jabatan), komponen variabel (uang jalan, uang lembur, potongan kasbon, klaim kerusakan), serta perhitungan kepatuhan perpajakan (PPh 21 TER 2024) dan asuransi sosial (BPJS Kesehatan & Ketenagakerjaan).</p>
+
+    <h2>2. Tujuan Bisnis</h2>
+    <ul>
+        <li><strong>Efisiensi Waktu & Tenaga:</strong> Mengurangi waktu pemrosesan payroll bulanan dengan mengotomatisasi kalkulasi BPJS dan PPh 21.</li>
+        <li><strong>Akurasi Perhitungan:</strong> Meminimalisir <em>human error</em> dalam perhitungan uang jalan, potongan klaim, dan pajak.</li>
+        <li><strong>Kepatuhan Regulasi:</strong> Memastikan potongan PPh 21 sesuai dengan aturan pemerintah terbaru (TER 2024) dan potongan BPJS sesuai standar persentase yang berlaku (dengan plafon dan UMR cabang).</li>
+        <li><strong>Keamanan Data:</strong> Menyediakan sistem otentikasi yang aman (dilengkapi Math Captcha) dan pembatasan hak akses berbasis peran (Role-Based Access Control).</li>
+    </ul>
+
+    <h2>3. Ruang Lingkup (Scope)</h2>
+    <h3>In-Scope (Di dalam cakupan)</h3>
+    <ul>
+        <li>Manajemen Master Data: Karyawan, Cabang, Jabatan, Komponen Gaji, Template Gaji.</li>
+        <li>Manajemen Transaksi Gaji: Input Uang Jalan, Lembur, Kasbon, Klaim.</li>
+        <li>Kalkulator Otomatis: BPJS (JHT, JP, JKK, JKm, Kes) dan PPh 21 (TER 2024).</li>
+        <li>Siklus Payroll: Generate gaji bulanan, rekaman periode, publikasi slip gaji.</li>
+        <li>Laporan & Distribusi: Cetak/Download slip gaji dalam format PDF.</li>
+    </ul>
+    <h3>Out-of-Scope (Di luar cakupan)</h3>
+    <ul>
+        <li>Integrasi langsung dengan mesin absensi fisik (fingerprint/face recognition) – data kehadiran saat ini ditangani secara rekapitulasi atau diinput sebagai komponen variabel.</li>
+        <li>Sistem akuntansi buku besar (General Ledger) – sistem hanya menghasilkan output/laporan payroll.</li>
+    </ul>
+
+    <h2>4. Kebutuhan Bisnis Utama (Business Requirements)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Kebutuhan Bisnis</th>
+                <th>Prioritas</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="req-id">BR-01</td>
+                <td>Sistem harus mampu mengelola data multi-cabang dengan standar UMR yang berbeda per cabang.</td>
+                <td>Tinggi</td>
+            </tr>
+            <tr>
+                <td class="req-id">BR-02</td>
+                <td>Sistem harus dapat menangani komponen gaji variabel yang spesifik untuk industri trucking (Uang Jalan, Potongan Klaim Barang).</td>
+                <td>Tinggi</td>
+            </tr>
+            <tr>
+                <td class="req-id">BR-03</td>
+                <td>Sistem harus menghitung potongan dan tunjangan BPJS secara otomatis berdasarkan Gaji Pokok atau UMR cabang (mana yang lebih besar).</td>
+                <td>Tinggi</td>
+            </tr>
+            <tr>
+                <td class="req-id">BR-04</td>
+                <td>Sistem harus mengakomodasi pemotongan Pajak Penghasilan (PPh 21) sesuai regulasi TER 2024 dan menyediakan opsi untuk menonaktifkannya.</td>
+                <td>Tinggi</td>
+            </tr>
+            <tr>
+                <td class="req-id">BR-05</td>
+                <td>Sistem harus memungkinkan penyesuaian (override) komponen gaji pada level individu karyawan.</td>
+                <td>Sedang</td>
+            </tr>
+            <tr>
+                <td class="req-id">BR-06</td>
+                <td>Sistem harus mencatat riwayat periode penggajian dan mengunci (lock) data slip gaji yang sudah di-generate (published).</td>
+                <td>Tinggi</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>5. Pemangku Kepentingan & Pengguna (Roles)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Peran (Role)</th>
+                <th>Tanggung Jawab / Hak Akses</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Super Admin</strong></td>
+                <td>Memiliki akses penuh ke seluruh sistem, termasuk pengaturan tarif BPJS, konfigurasi PPh 21, dan manajemen user.</td>
+            </tr>
+            <tr>
+                <td><strong>Admin (HR)</strong></td>
+                <td>Mengelola Master Data (Karyawan, Cabang, Jabatan), membuat template gaji, dan mengeksekusi proses "Generate Payroll".</td>
+            </tr>
+            <tr>
+                <td><strong>Finance</strong></td>
+                <td>Melihat rekapitulasi penggajian, memvalidasi total pengeluaran payroll bulanan, dan mencetak laporan.</td>
+            </tr>
+            <tr>
+                <td><strong>Operator</strong></td>
+                <td>Melakukan input data transaksional harian/bulanan seperti kasbon, uang jalan, lembur, dan klaim kerusakan.</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
