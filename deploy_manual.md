@@ -381,6 +381,10 @@ jobs:
             php artisan route:cache
             php artisan view:cache
             
+            # 6.5. Perbaiki hak akses (Folder permission) agar Nginx (www-data) bisa menulis logs/views/uploads
+            sudo chown -R www-data:www-data /var/www/payroll-app/storage /var/www/payroll-app/bootstrap/cache
+            sudo chmod -R 775 /var/www/payroll-app/storage /var/www/payroll-app/bootstrap/cache
+            
             # 7. Selesai
             echo "Deployment Sukses!"
 ```
