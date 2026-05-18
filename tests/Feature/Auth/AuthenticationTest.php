@@ -21,9 +21,10 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->post('/login', [
+        $response = $this->withSession(['captcha_answer' => 5])->post('/login', [
             'email' => $user->email,
             'password' => 'password',
+            'captcha' => 5,
         ]);
 
         $this->assertAuthenticated();
@@ -34,9 +35,10 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->post('/login', [
+        $this->withSession(['captcha_answer' => 5])->post('/login', [
             'email' => $user->email,
             'password' => 'wrong-password',
+            'captcha' => 5,
         ]);
 
         $this->assertGuest();
@@ -44,6 +46,7 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_logout(): void
     {
+        /** @var \App\Models\User $user */
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->post('/logout');
