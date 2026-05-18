@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Exports\EmployeeTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Imports\EmployeeImport;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EmployeeController extends Controller
 {
@@ -190,6 +193,42 @@ class EmployeeController extends Controller
     {
         Employee::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Employee deleted.');
+    }
+
+    /**
+     * Download template Excel untuk import massal karyawan.
+     */
+    public function downloadImportTemplate()
+    {
+        return Excel::download(
+            new EmployeeTemplateExport(),
+            'template_import_karyawan.xlsx'
+        );
+    }
+
+    /**
+     * Proses upload file Excel dan import data karyawan.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ], [
+            'file.required' => 'File Excel wajib diupload.',
+            'file.mimes'    => 'File harus berformat .xlsx, .xls, atau .csv.',
+            'file.max'      => 'Ukuran file maksimal 5 MB.',
+        ]);
+
+        $importer = new EmployeeImport($request->user()->id);
+        Excel::import($importer, $request->file('file'));
+
+        return back()->with([
+            'importResults' => [
+                'success' => $importer->successCount,
+                'errors'  => $importer->errorCount,
+                'rows'    => $importer->results,
+            ],
+        ]);
     }
 
     /**

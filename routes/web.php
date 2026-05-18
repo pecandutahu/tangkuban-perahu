@@ -81,6 +81,10 @@ Route::middleware('auth')->group(function () {
         Route::resource('positions', \App\Http\Controllers\Web\PositionController::class)->except(['create', 'edit', 'show']);
         Route::resource('payroll-components', \App\Http\Controllers\Web\PayrollComponentController::class)->except(['create', 'edit', 'show']);
         Route::resource('templates', \App\Http\Controllers\Web\PayrollTemplateController::class)->except(['show']);
+        Route::get('/employees/import-template', [\App\Http\Controllers\Web\EmployeeController::class, 'downloadImportTemplate'])
+            ->name('employees.import-template');
+        Route::post('/employees/import', [\App\Http\Controllers\Web\EmployeeController::class, 'import'])
+            ->name('employees.import');
         Route::resource('employees', \App\Http\Controllers\Web\EmployeeController::class)->except(['show']);
         Route::get('/employees/{id}/payroll-history', [\App\Http\Controllers\Web\EmployeeController::class, 'payrollHistory'])
             ->name('employees.payroll-history');
