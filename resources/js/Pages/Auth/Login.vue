@@ -14,17 +14,26 @@ defineProps({
     status: {
         type: String,
     },
+    captcha_num1: {
+        type: Number,
+        required: true,
+    },
+    captcha_num2: {
+        type: Number,
+        required: true,
+    },
 });
 
 const form = useForm({
     email: '',
     password: '',
+    captcha: '',
     remember: false,
 });
 
 const submit = () => {
     form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+        onFinish: () => form.reset('password', 'captcha'),
     });
 };
 </script>
@@ -67,6 +76,20 @@ const submit = () => {
                 />
 
                 <InputError class="mt-2" :message="form.errors.password" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="captcha" :value="`Selesaikan: ${captcha_num1} + ${captcha_num2} = ?`" />
+
+                <TextInput
+                    id="captcha"
+                    type="number"
+                    class="mt-1 block w-full"
+                    v-model="form.captcha"
+                    required
+                />
+
+                <InputError class="mt-2" :message="form.errors.captcha" />
             </div>
 
             <div class="mt-4 block">
